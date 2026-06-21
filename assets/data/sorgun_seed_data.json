@@ -1,0 +1,375 @@
+{
+  "il": "Yozgat",
+  "ilce": "Sorgun",
+  "not": "Bu dosya, web kaynaklarından doğrulanabilen seed veridir. Mahalle→cadde/sokak tamlığı için NVI/MAKS-UAVT verisi veya güncel resmi/ruhsatlı adres API'si kullanılmalıdır.",
+  "kaynak_notlari": [
+    "NVI AKS/MAKS adres bileşenleri mahalle, cadde, sokak, bina no gibi alanları içerir.",
+    "Sorgun köy/mahalle sayılarında kaynaklar arasında güncellik farkı vardır: bazı kaynaklar 73, bazıları 74 köy gösterir.",
+    "OpenStreetMap tabanlı kaynaklar Sorgun genelinde bazı cadde/sokak/yol adlarını verir, fakat mahalle bazında eksiksiz değildir.",
+    "Şehir Veri mahalle sayfaları bazı mahallelerde sokak/cadde sayısı ve ilk kayıtları gösterir; tam liste sayfada gizlenmektedir."
+  ],
+  "sorgun_merkez_mahalleleri_seed": [
+    "Agahefendi Mahallesi",
+    "Ahmetefendi Mahallesi",
+    "Aydınlıkevler Mahallesi",
+    "Bahçelievler Mahallesi",
+    "Bedirbaba Mahallesi",
+    "Çay Mahallesi",
+    "Faraşlı Mahallesi",
+    "Güzelyurt Mahallesi",
+    "Hanbaşı Mahallesi",
+    "Karşıyaka Mahallesi",
+    "Osmançavuş Mahallesi",
+    "Yazlak Mahallesi",
+    "Yeni Mahallesi",
+    "Yenidoğan Mahallesi",
+    "Yeşilöz Mahallesi"
+  ],
+  "tum_mahalleler_flat_seed": [
+    "Agahefendi Mahallesi",
+    "Ahmetefendi Mahallesi",
+    "Ahmetfakılı Mahallesi",
+    "Akocak Mahallesi",
+    "Aksaray Mahallesi",
+    "Aydınlar Mahallesi",
+    "Aydınlıkevler Mahallesi",
+    "Bahçelievler Mahallesi",
+    "Bedirbaba Mahallesi",
+    "Burunören Mahallesi",
+    "Camiikebir Mahallesi",
+    "Çarşıbaşı Mahallesi",
+    "Çavuşlu Mahallesi",
+    "Çay Mahallesi",
+    "Çay Mahallesi",
+    "Çötelli Mahallesi",
+    "Duralidayılı Mahallesi",
+    "Faraşlı Mahallesi",
+    "Gülveren Mahallesi",
+    "Gümüşkavak Mahallesi",
+    "Güzel Yurt Mahallesi",
+    "Güzelyurt Mahallesi",
+    "Hanbaşı Mahallesi",
+    "Hoşumlu Mahallesi",
+    "Hürriyet Mahallesi",
+    "İsmailhacılı Mahallesi",
+    "Kale Mahallesi",
+    "Karakız Mahallesi",
+    "Karşıyaka Mahallesi",
+    "Karşıyaka Mahallesi",
+    "Karşıyaka Mahallesi",
+    "Kayabaşı Mahallesi",
+    "Kayakışla Mahallesi",
+    "Keser Mahallesi",
+    "Mahmatlı Mahallesi",
+    "Merkez Mahallesi",
+    "Musu Baba Mahallesi",
+    "Mükremin Mahallesi",
+    "Mülazım Mahallesi",
+    "Osmançavuş Mahallesi",
+    "Salur Mahallesi",
+    "Sorgun Tatlısı Mahallesi",
+    "Sungur Mahallesi",
+    "Yaycılar Mahallesi",
+    "Yazlak Mahallesi",
+    "Yeni Mahallesi",
+    "Yeni Mahallesi",
+    "Yenidoğan Mahallesi",
+    "Yeşilöz Mahallesi"
+  ],
+  "koyler_seed": [
+    "Ağcın Köyü",
+    "Akoluk Köyü",
+    "Alcı Köyü",
+    "Alişar Köyü",
+    "Aşağıcumafakılı Köyü",
+    "Aşağıemirler Köyü",
+    "Aşağıkarahacılı Köyü",
+    "Aşağıkarakaya Köyü",
+    "Ayrıdam Köyü",
+    "Babalı Köyü",
+    "Bağlarbaşı Köyü",
+    "Belencumafakılı Köyü",
+    "Boğazcumafakılı Köyü",
+    "Büyükeynelli Köyü",
+    "Büyükkışla Köyü",
+    "Büyükören Köyü",
+    "Büyüktaşlık Köyü",
+    "Caferli Köyü",
+    "Cihanşarlı Köyü",
+    "Çakırhacılı Köyü",
+    "Çamurlu Köyü",
+    "Çavuşköyü Köyü",
+    "Çayözü Köyü",
+    "Dişli Köyü",
+    "Doğanlı Köyü",
+    "Emirhan Köyü",
+    "Emirler Köyü",
+    "Erkekli Köyü",
+    "Garipler Köyü",
+    "Gedikhasanlı Köyü",
+    "Gevrek Köyü",
+    "Gökiniş Köyü",
+    "Gököz Köyü",
+    "Gözbaba Köyü",
+    "Güngören Köyü",
+    "Günpınar Köyü",
+    "Günyazı Köyü",
+    "Halilfakılı Köyü",
+    "İdrisli Köyü",
+    "İkikara Köyü",
+    "İncesu Köyü",
+    "İsafakılı Köyü",
+    "Kapaklı Köyü",
+    "Karaabalı Köyü",
+    "Karaburun Köyü",
+    "Karakocaoğlu Köyü",
+    "Karalık Köyü",
+    "Karaveli Köyü",
+    "Karlık Ayvalık Köyü",
+    "Kepirce Köyü",
+    "Kodallı Köyü",
+    "Kodallıçiftliği Köyü",
+    "Küçükeynelli Köyü",
+    "Küçükköhne Köyü",
+    "Küçüktaşlık Köyü",
+    "Külhüyük Köyü",
+    "Mansuroğlu Köyü",
+    "Mehmetbeyli Köyü",
+    "Mirahor Köyü",
+    "Muğallı Köyü",
+    "Ocaklı Köyü",
+    "Osmaniye Köyü",
+    "Peyniryemez Köyü",
+    "Sarıhacılı Köyü",
+    "Sarıhamzalı Köyü",
+    "Sivri Köyü",
+    "Şahmuratlı Köyü",
+    "Taşpınar Köyü",
+    "Temrezli Köyü",
+    "Tiftik Köyü",
+    "Tulum Köyü",
+    "Tuzlacık Köyü",
+    "Veliöldüğü Köyü",
+    "Yazılıtaş Köyü"
+  ],
+  "sorgun_geneli_osm_cadde_sokak_yol_seed": [
+    {
+      "ad": "3001.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "3002.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "3003.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "3030.",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "3051.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "3560.",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "5001.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "5201.",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "Alişar",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Atatürk",
+      "tip": "Bulvar"
+    },
+    {
+      "ad": "Çöplük",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Çekerek",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Çelebi",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Çevreyolu 1.",
+      "tip": "Bulvar"
+    },
+    {
+      "ad": "Bulut",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Cumhuriyet",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Eymir",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Faraşlı",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Günyazı",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Kadışehri - Sorgun",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Mansuroğlu",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Sakarya",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Sivri",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Sorgun - Aydıncık",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Sorgun Eymir Yolu",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Sungur - Bahadın",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Sungur - Bağlıca",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Sungur - Mansuroğlu",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Yozgat - Tokat",
+      "tip": "Yol"
+    },
+    {
+      "ad": "Yusuf Kılıç",
+      "tip": "Sokak"
+    },
+    {
+      "ad": "Ziya Gökalp",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "Şehit Mustafa Önder",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "İmam Hatip",
+      "tip": "Cadde"
+    },
+    {
+      "ad": "İsafakılı - Darıcı",
+      "tip": "Yol"
+    },
+    {
+      "ad": "İsafakılı - Taşpınar",
+      "tip": "Yol"
+    }
+  ],
+  "agahefendi_mahallesi_gorunen_ilk_15_sokak_seed": [
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2501.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2502.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2503.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2504.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2505.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2506.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2507.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2508.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2509.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2510.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2511.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2512.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2513.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2514.",
+      "tip": "Sokak"
+    },
+    {
+      "mahalle": "Agahefendi Mahallesi",
+      "ad": "2515.",
+      "tip": "Sokak"
+    }
+  ],
+  "uavt_tam_veri_icin_onerilen_sorgu": "SELECT il_adi, ilce_adi, mahalle_adi, sokak_adi, sokak_id, mahalle_id FROM sokaklar WHERE UPPER(il_adi)='YOZGAT' AND UPPER(ilce_adi)='SORGUN' ORDER BY mahalle_adi, sokak_adi;"
+}
