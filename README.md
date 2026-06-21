@@ -34,6 +34,17 @@ flutter build apk --release
 
 GitHub Actions workflow'u her push/pull request icin analiz, test ve release APK build adimlarini calistirir. Uretilen dosya artifact olarak `sorgun-emlak-defteri-apk` adiyla yuklenir.
 
+## GitHub Release APK
+
+Kullanıcıların APK'yi GitHub Releases sayfasindan indirmesi icin version tag'i gonderin:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Tag push edilince GitHub Actions release APK'yi derler ve `Releases` bolumune `sorgun-emlak-defteri-v1.0.0.apk` dosyasi olarak yukler.
+
 ## Uygulamayi Guncelleme
 
 Yeni ozellik ekledikten sonra ayni paket adi (`com.sorgunemlak.defter`) ile APK kuruldugunda telefondaki veriler korunur.

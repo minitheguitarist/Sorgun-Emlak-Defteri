@@ -3,8 +3,12 @@ name: Android APK
 on:
   push:
     branches: ["main", "master"]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -42,3 +46,27 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Prepare release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p release
+          cp build/app/outputs/flutter-apk/app-release.apk "release/sorgun-emlak-defteri-${GITHUB_REF_NAME}.apk"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" \
+              "release/sorgun-emlak-defteri-${GITHUB_REF_NAME}.apk" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              "release/sorgun-emlak-defteri-${GITHUB_REF_NAME}.apk" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Sorgun Emlak Defteri ${GITHUB_REF_NAME}" \
+              --notes "Android APK dosyasi ekte. Telefona kurmak icin APK'yi indirip acin."
+          fi
