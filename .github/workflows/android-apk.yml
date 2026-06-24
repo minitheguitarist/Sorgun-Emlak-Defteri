@@ -33,19 +33,59 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Prepare release signing
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || \
+             [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
+             [ -z "$ANDROID_KEY_ALIAS" ] || \
+             [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Missing Android release signing secrets. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/android-signing"
+          printf "%s" "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-signing/release-keystore.jks"
+
+          {
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/android-signing/release-keystore.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
       - name: Build release APK
         run: flutter build apk --release
+
+      - name: Verify release APK signature
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -eu
+          BUILD_TOOLS_DIR="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
 
       - name: Build debug APK
         run: flutter build apk --debug
 
-      - name: Upload APKs
+      - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: sorgun-emlak-defteri-apk
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/flutter-apk/app-debug.apk
+          name: sorgun-emlak-defteri-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Upload signed release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: sorgun-emlak-defteri-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Prepare release APK
         if: startsWith(github.ref, 'refs/tags/v')

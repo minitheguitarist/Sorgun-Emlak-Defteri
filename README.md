@@ -32,7 +32,37 @@ Release APK:
 flutter build apk --release
 ```
 
-GitHub Actions workflow'u her push/pull request icin analiz, test ve release APK build adimlarini calistirir. Uretilen dosya artifact olarak `sorgun-emlak-defteri-apk` adiyla yuklenir.
+GitHub Actions workflow'u her push/pull request icin analiz, test ve release APK build adimlarini calistirir. Debug APK artifact olarak `sorgun-emlak-defteri-debug-apk` adiyla yuklenir. Tag release'lerinde imzali release APK ayrica `sorgun-emlak-defteri-release-apk` artifact'i ve GitHub Release asset'i olarak yayinlanir. GitHub Releases altinda yayinlanan APK'nin telefona kurulabilmesi icin release imzalama secret'lari tanimli olmalidir.
+
+## Release Imzalama
+
+GitHub'dan indirilen release APK'nin kurulabilmesi icin APK imzali olmalidir. Bir kere release keystore olusturun:
+
+```bash
+keytool -genkeypair -v \
+  -keystore release-keystore.jks \
+  -alias sorgun-emlak-defteri \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+```
+
+Keystore'u base64'e cevirin:
+
+```bash
+base64 -w 0 release-keystore.jks
+```
+
+GitHub repo ayarlarinda `Settings > Secrets and variables > Actions` altina su secret'lari ekleyin:
+
+- `ANDROID_KEYSTORE_BASE64`: base64 ciktisi
+- `ANDROID_KEYSTORE_PASSWORD`: keystore sifresi
+- `ANDROID_KEY_ALIAS`: `sorgun-emlak-defteri`
+- `ANDROID_KEY_PASSWORD`: key sifresi
+
+Bu keystore'u kaybetmeyin. Sonraki surumlerin mevcut uygulamanin ustune kurulabilmesi icin ayni keystore ile imzalanmasi gerekir.
+
+Telefonda daha once `flutter run` veya debug APK ile kurulmus uygulama varsa, ilk imzali release APK onun ustune kurulamaz; debug ve release imzalari farklidir. Ilk release kurulumundan once eski debug uygulamasini kaldirin. Bu islem cihazdaki uygulama verisini siler.
 
 ## GitHub Release APK
 

@@ -11,6 +11,10 @@ plan
 
 android/.gradle/
 android/local.properties
+*.jks
+*.keystore
+android/key.properties
+.android-release-signing.env
 
 *.iml
 *.ipr
