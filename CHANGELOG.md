@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Aramali adres secimi.
+- Haritadan konum secme, konumu acma ve konum paylasma.
+- Veritabani ve fotograflar icin paylasim paketi disa/içe aktarma.
+
 ## 1.0.1
 
 - Aramali adres secimi.
