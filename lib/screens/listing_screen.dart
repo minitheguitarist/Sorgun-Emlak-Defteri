@@ -7,6 +7,7 @@ import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/search_selection_field.dart';
 import 'property_detail_screen.dart';
 
 class ListingScreen extends StatefulWidget {
@@ -313,37 +314,27 @@ class _FilterPanel extends StatelessWidget {
               ],
               onChanged: onPlaceKindChanged,
             ),
-            _FilterDropdown<String?>(
+            SearchSelectionField(
               width: 230,
               value: places.contains(placeName) ? placeName : null,
               label: 'Mahalle/Köy',
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Hepsi'),
-                ),
-                ...places.map<DropdownMenuItem<String?>>(
-                  (item) => DropdownMenuItem(value: item, child: Text(item)),
-                ),
-              ],
+              options: places,
+              emptyText: 'Hepsi',
+              dense: true,
+              clearText: 'Hepsi',
               onChanged: onPlaceNameChanged,
             ),
-            _FilterDropdown<String?>(
+            const SizedBox(width: 10),
+            SearchSelectionField(
               width: 220,
               value: (addressBook?.streets ?? const []).contains(streetName)
                   ? streetName
                   : null,
               label: 'Cadde/Sokak',
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Hepsi'),
-                ),
-                ...(addressBook?.streets ?? const <String>[])
-                    .map<DropdownMenuItem<String?>>(
-                  (item) => DropdownMenuItem(value: item, child: Text(item)),
-                ),
-              ],
+              options: addressBook?.streets ?? const <String>[],
+              emptyText: 'Hepsi',
+              dense: true,
+              clearText: 'Hepsi',
               onChanged: onStreetChanged,
             ),
             SizedBox(

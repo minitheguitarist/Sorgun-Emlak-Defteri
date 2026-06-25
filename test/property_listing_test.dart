@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sorgun_emlak_defteri/models/property_listing.dart';
 import 'package:sorgun_emlak_defteri/models/property_type.dart';
 import 'package:sorgun_emlak_defteri/services/formatters.dart';
+import 'package:sorgun_emlak_defteri/services/location_links.dart';
 
 void main() {
   test('kar marji guncel satis fiyatindan hesaplanir', () {
@@ -78,5 +79,36 @@ void main() {
   test('metrekare girdisi nokta ve virgul ondalik kabul eder', () {
     expect(parseOptionalNumberInput('120.5'), 120.5);
     expect(parseOptionalNumberInput('120,5'), 120.5);
+  });
+
+  test('konum bilgisi kayit modelinde ve maps linkinde korunur', () {
+    final now = DateTime(2026, 1, 1);
+    final listing = PropertyListing(
+      type: PropertyType.land,
+      placeKind: PlaceKind.neighborhood,
+      placeName: 'Yeni Mahallesi',
+      streetName: 'Cumhuriyet Cadde',
+      blockNo: '12',
+      parcelNo: '8',
+      latitude: 39.8104,
+      longitude: 35.185,
+      costPrice: 2000,
+      salePrice: 2500,
+      description: '',
+      photoPaths: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = PropertyListing.fromMap(listing.toMap());
+    final uri = googleMapsUri(
+      latitude: restored.latitude!,
+      longitude: restored.longitude!,
+    );
+
+    expect(restored.hasLocation, isTrue);
+    expect(restored.latitude, 39.8104);
+    expect(restored.longitude, 35.185);
+    expect(uri.toString(), contains('query=39.8104%2C35.185'));
   });
 }

@@ -14,6 +14,8 @@ class PropertyListing {
     this.parcelNo,
     this.roomLayout,
     this.squareMeters,
+    this.latitude,
+    this.longitude,
     required this.costPrice,
     required this.salePrice,
     required this.description,
@@ -35,6 +37,8 @@ class PropertyListing {
   final String? parcelNo;
   final String? roomLayout;
   final double? squareMeters;
+  final double? latitude;
+  final double? longitude;
   final double costPrice;
   final double salePrice;
   final String description;
@@ -57,6 +61,8 @@ class PropertyListing {
   double get finalPrice => soldPrice ?? salePrice;
 
   double get finalProfit => finalPrice - costPrice;
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   double get finalProfitPercent {
     if (finalPrice <= 0) {
@@ -119,6 +125,8 @@ class PropertyListing {
     String? parcelNo,
     String? roomLayout,
     double? squareMeters,
+    double? latitude,
+    double? longitude,
     double? costPrice,
     double? salePrice,
     String? description,
@@ -140,6 +148,8 @@ class PropertyListing {
       parcelNo: parcelNo ?? this.parcelNo,
       roomLayout: roomLayout ?? this.roomLayout,
       squareMeters: squareMeters ?? this.squareMeters,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
       description: description ?? this.description,
@@ -164,6 +174,8 @@ class PropertyListing {
       'parcel_no': parcelNo,
       'room_layout': roomLayout,
       'square_meters': squareMeters,
+      'latitude': latitude,
+      'longitude': longitude,
       'cost_price': costPrice,
       'sale_price': salePrice,
       'description': description,
@@ -189,6 +201,8 @@ class PropertyListing {
       parcelNo: map['parcel_no'] as String?,
       roomLayout: map['room_layout'] as String?,
       squareMeters: (map['square_meters'] as num?)?.toDouble(),
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
       costPrice: (map['cost_price'] as num).toDouble(),
       salePrice: (map['sale_price'] as num).toDouble(),
       description: map['description'] as String? ?? '',

@@ -1,13 +1,17 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/property_listing.dart';
 import '../models/property_type.dart';
 import '../services/address_repository.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
+import '../services/location_links.dart';
 import '../services/photo_service.dart';
+import '../widgets/search_selection_field.dart';
+import 'location_picker_screen.dart';
 
 class AddEditListingScreen extends StatefulWidget {
   const AddEditListingScreen({
@@ -47,6 +51,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _saleController;
   late final TextEditingController _descriptionController;
   late List<String> _photoPaths;
+  double? _latitude;
+  double? _longitude;
   bool _saving = false;
 
   bool get _isEditing => widget.listing != null;
@@ -81,6 +87,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
       text: listing?.description ?? '',
     );
     _photoPaths = [...?listing?.photoPaths];
+    _latitude = listing?.latitude;
+    _longitude = listing?.longitude;
     _costController.addListener(_recalculate);
     _saleController.addListener(_recalculate);
   }
@@ -208,50 +216,43 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey('place-${_placeKind.name}-$_placeName'),
-            initialValue: places.contains(_placeName) ? _placeName : null,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Mahalle/Köy',
-              prefixIcon: Icon(Icons.place_outlined),
-            ),
-            items: places
-                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-                .toList(),
-            validator: (value) =>
-                value == null ? 'Mahalle veya köy seçin.' : null,
+          SearchSelectionField(
+            label: 'Mahalle/Köy',
+            value: places.contains(_placeName) ? _placeName : null,
+            options: places,
+            prefixIcon: Icons.place_outlined,
+            requiredMessage: 'Mahalle veya köy seçin.',
+            allowClear: false,
             onChanged: (value) => setState(() => _placeName = value),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String?>(
-            key: ValueKey('street-$_streetName'),
-            initialValue:
+          SearchSelectionField(
+            label: _placeKind == PlaceKind.village
+                ? 'Cadde/Sokak/Yol (isteğe bağlı)'
+                : 'Cadde/Sokak/Yol',
+            value:
                 addressBook.streets.contains(_streetName) ? _streetName : null,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: _placeKind == PlaceKind.village
-                  ? 'Cadde/Sokak/Yol (isteğe bağlı)'
-                  : 'Cadde/Sokak/Yol',
-              prefixIcon: const Icon(Icons.signpost_outlined),
-            ),
-            items: [
-              if (_placeKind == PlaceKind.village)
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Seçilmedi'),
-                ),
-              ...addressBook.streets.map<DropdownMenuItem<String?>>(
-                (item) => DropdownMenuItem(value: item, child: Text(item)),
-              ),
-            ],
-            validator: (value) {
-              if (_placeKind == PlaceKind.village) {
-                return null;
-              }
-              return value == null ? 'Cadde, sokak veya yol seçin.' : null;
-            },
+            options: addressBook.streets,
+            emptyText: 'Seçilmedi',
+            prefixIcon: Icons.signpost_outlined,
+            requiredMessage: _placeKind == PlaceKind.village
+                ? null
+                : 'Cadde, sokak veya yol seçin.',
+            allowClear: _placeKind == PlaceKind.village,
+            clearText: 'Seçilmedi',
             onChanged: (value) => setState(() => _streetName = value),
+          ),
+          const SizedBox(height: 12),
+          _LocationEditor(
+            latitude: _latitude,
+            longitude: _longitude,
+            onSelect: _selectLocation,
+            onClear: _latitude == null || _longitude == null
+                ? null
+                : () => setState(() {
+                      _latitude = null;
+                      _longitude = null;
+                    }),
           ),
           const SizedBox(height: 12),
           AnimatedSwitcher(
@@ -498,6 +499,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         squareMeters: _type == PropertyType.apartment
             ? parseOptionalNumberInput(_squareMetersController.text)
             : null,
+        latitude: _latitude,
+        longitude: _longitude,
         costPrice: parseMoneyInput(_costController.text),
         salePrice: parseMoneyInput(_saleController.text),
         description: _descriptionController.text.trim(),
@@ -563,12 +566,103 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     }
   }
 
+  Future<void> _selectLocation() async {
+    final selected = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+        ),
+      ),
+    );
+    if (!mounted || selected == null) {
+      return;
+    }
+    setState(() {
+      _latitude = selected.latitude;
+      _longitude = selected.longitude;
+    });
+  }
+
   void _showSnack(String message) {
     if (!mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _LocationEditor extends StatelessWidget {
+  const _LocationEditor({
+    required this.latitude,
+    required this.longitude,
+    required this.onSelect,
+    required this.onClear,
+  });
+
+  final double? latitude;
+  final double? longitude;
+  final VoidCallback onSelect;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasLocation = latitude != null && longitude != null;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  hasLocation
+                      ? formatCoordinates(
+                          latitude: latitude!,
+                          longitude: longitude!,
+                        )
+                      : 'Konum seçilmedi',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: onSelect,
+                  icon: const Icon(Icons.map_outlined),
+                  label: Text(hasLocation ? 'Konumu değiştir' : 'Konum seç'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton.filledTonal(
+                tooltip: 'Konumu temizle',
+                onPressed: onClear,
+                icon: const Icon(Icons.location_off_outlined),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

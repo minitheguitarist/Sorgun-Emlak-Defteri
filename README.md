@@ -9,6 +9,9 @@ Sorgun Emlak Defteri, Android icin hazirlanan cevrimdisi bir emlak takip uygulam
 - Sorgun/Yozgat mahalle, koy ve cadde/sokak/yol seed verisi.
 - Galeri ve kamera ile coklu fotograf ekleme.
 - Maliyet, satis fiyati, kar ve kar yuzdesi hesabi.
+- Aramali mahalle/koy ve cadde/sokak/yol secimi.
+- Ilanlara haritadan konum secme, konumu acma ve konum paylasma.
+- Uc telefon icin veritabani ve fotograflari tek dosyada disa/ice aktarma.
 - Tek tikla acilip kapanan gizli bilgi paneli.
 - Fiyat degisikliklerinde otomatik fiyat gecmisi.
 - Satildi akisi: gercek satis fiyati girilir, ilan aktif listeden cikar ve Satilanlar arsivine duser.
@@ -93,7 +96,7 @@ flutter build apk --release
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
-Veritabanina yeni kolon eklendiginde `lib/services/app_database.dart` icinde veritabanı version'i artirilmali ve `onUpgrade` migration'i yazilmalidir. Bu projede oda tipi ve metrekare alanlari version 2 migration'i ile eklenmistir.
+Veritabanina yeni kolon eklendiginde `lib/services/app_database.dart` icinde veritabanı version'i artirilmali ve `onUpgrade` migration'i yazilmalidir. Bu projede oda tipi/metrekare alanlari version 2, konum koordinatlari version 3 migration'i ile eklenmistir.
 
 ## Adres Verisi
 

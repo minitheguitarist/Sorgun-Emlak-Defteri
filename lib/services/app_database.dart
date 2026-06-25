@@ -16,7 +16,7 @@ class AppDatabase {
     final dbPath = p.join(basePath, 'sorgun_emlak_defteri.db');
     _database = await openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
 CREATE TABLE listings (
@@ -30,6 +30,8 @@ CREATE TABLE listings (
   parcel_no TEXT,
   room_layout TEXT,
   square_meters REAL,
+  latitude REAL,
+  longitude REAL,
   cost_price REAL NOT NULL,
   sale_price REAL NOT NULL,
   description TEXT NOT NULL,
@@ -64,6 +66,10 @@ CREATE TABLE price_history (
           await db.execute(
             'ALTER TABLE listings ADD COLUMN square_meters REAL',
           );
+        }
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE listings ADD COLUMN latitude REAL');
+          await db.execute('ALTER TABLE listings ADD COLUMN longitude REAL');
         }
       },
     );

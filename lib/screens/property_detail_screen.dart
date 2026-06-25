@@ -7,6 +7,7 @@ import '../models/property_listing.dart';
 import '../models/property_type.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
+import '../services/location_links.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   const PropertyDetailScreen({
@@ -97,6 +98,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ),
                   const SizedBox(height: 18),
                   _PublicInfoGrid(listing: _listing, soldView: widget.soldView),
+                  if (_listing.hasLocation) ...[
+                    const SizedBox(height: 12),
+                    _LocationActions(
+                      listing: _listing,
+                      onOpen: _openLocation,
+                      onShare: _shareLocation,
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   if (_listing.type != PropertyType.apartment)
                     _ParcelInfo(listing: _listing),
@@ -150,6 +159,30 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _openLocation() async {
+    final opened = await openListingLocation(_listing);
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnack('Konum açılamadı.');
+  }
+
+  Future<void> _shareLocation() async {
+    try {
+      await shareListingLocation(_listing);
+    } catch (_) {
+      if (mounted) {
+        _showSnack('Konum paylaşılamadı.');
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }
@@ -374,6 +407,76 @@ class _ParcelInfo extends StatelessWidget {
           child: _InfoTile(label: 'Parsel', value: listing.parcelNo ?? '-'),
         ),
       ],
+    );
+  }
+}
+
+class _LocationActions extends StatelessWidget {
+  const _LocationActions({
+    required this.listing,
+    required this.onOpen,
+    required this.onShare,
+  });
+
+  final PropertyListing listing;
+  final VoidCallback onOpen;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  formatCoordinates(
+                    latitude: listing.latitude!,
+                    longitude: listing.longitude!,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Konumu aç'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: onShare,
+                  icon: const Icon(Icons.ios_share_outlined),
+                  label: const Text('Konum paylaş'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

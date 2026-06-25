@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'screens/add_edit_listing_screen.dart';
+import 'screens/data_transfer_screen.dart';
 import 'screens/edit_selection_screen.dart';
 import 'screens/listing_screen.dart';
 import 'screens/sold_screen.dart';
@@ -81,7 +82,8 @@ enum AppSection {
   listings,
   add,
   edit,
-  sold;
+  sold,
+  dataTransfer;
 
   String get title {
     switch (this) {
@@ -93,6 +95,8 @@ enum AppSection {
         return 'Düzenleme';
       case AppSection.sold:
         return 'Satılanlar';
+      case AppSection.dataTransfer:
+        return 'Veri Aktarımı';
     }
   }
 
@@ -106,6 +110,8 @@ enum AppSection {
         return Icons.edit_note_outlined;
       case AppSection.sold:
         return Icons.inventory_2_outlined;
+      case AppSection.dataTransfer:
+        return Icons.sync_alt_outlined;
     }
   }
 }
@@ -234,6 +240,11 @@ class _AppHomeState extends State<AppHome> {
         return SoldScreen(
           database: _database,
           refreshNonce: _refreshNonce,
+        );
+      case AppSection.dataTransfer:
+        return DataTransferScreen(
+          database: _database,
+          onImported: _dataChanged,
         );
     }
   }
