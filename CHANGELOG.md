@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4
+
+- Daireler için apartman/site/müstakil ayrımı, kat bilgisi ve cephe alanı.
+- Filtre ekranında site, kat ve cephe filtreleri.
+- Mülk sahibini Android rehberinden seçme ve çoklu telefon numarası desteği.
+- Cadde/Sokak/Yol seçimini tüm kayıt tiplerinde isteğe bağlı yapma.
+- Liste/harita ekranı için genel metin araması.
+- Harita markerları için tip bazlı renkli ikonlar ve açıklama lejantı.
+
 ## 1.0.3
 
 - Harita ekranı için Android internet izni ve harita yükleme hata durumu.

@@ -46,12 +46,14 @@ class _ListingScreenState extends State<ListingScreen> {
   late Future<AddressBook> _addressFuture;
   late Future<List<PropertyListing>> _listingsFuture;
   _ListingsView _view = _ListingsView.list;
+  bool _searchOpen = false;
   DealType? _dealType;
   PropertyType? _type;
   PlaceKind? _placeKind;
   String? _placeName;
   String? _streetName;
   HousingKind? _housingKind;
+  final _searchController = TextEditingController();
   final _blockController = TextEditingController();
   final _parcelController = TextEditingController();
   final _roomLayoutController = TextEditingController();
@@ -60,6 +62,9 @@ class _ListingScreenState extends State<ListingScreen> {
   final _maxBuildingAgeController = TextEditingController();
   final _minBathroomController = TextEditingController();
   final _minBalconyController = TextEditingController();
+  final _floorCountController = TextEditingController();
+  final _floorNumberController = TextEditingController();
+  final _frontageController = TextEditingController();
 
   @override
   void initState() {
@@ -78,6 +83,7 @@ class _ListingScreenState extends State<ListingScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _blockController.dispose();
     _parcelController.dispose();
     _roomLayoutController.dispose();
@@ -86,6 +92,9 @@ class _ListingScreenState extends State<ListingScreen> {
     _maxBuildingAgeController.dispose();
     _minBathroomController.dispose();
     _minBalconyController.dispose();
+    _floorCountController.dispose();
+    _floorNumberController.dispose();
+    _frontageController.dispose();
     super.dispose();
   }
 
@@ -106,8 +115,20 @@ class _ListingScreenState extends State<ListingScreen> {
           children: [
             _ListingToolbar(
               view: _view,
+              searchOpen: _searchOpen,
+              searchController: _searchController,
               activeFilterCount: _activeFilterCount,
               onViewChanged: (view) => setState(() => _view = view),
+              onSearchChanged: (_) => setState(() {}),
+              onSearchToggle: () {
+                setState(() {
+                  if (_searchOpen && _searchController.text.isNotEmpty) {
+                    _searchController.clear();
+                  } else {
+                    _searchOpen = !_searchOpen;
+                  }
+                });
+              },
               onFilterPressed: () => _showFilters(addressBook),
             ),
             Expanded(
@@ -189,9 +210,11 @@ class _ListingScreenState extends State<ListingScreen> {
   }
 
   List<PropertyListing> _applyFilters(List<PropertyListing> listings) {
+    final searchQuery = _searchController.text;
     final block = _blockController.text.trim().toLowerCase();
     final parcel = _parcelController.text.trim().toLowerCase();
     final roomLayout = _roomLayoutController.text.trim().toLowerCase();
+    final frontage = _frontageController.text;
     final minSquareMeters =
         parseOptionalNumberInput(_minSquareMetersController.text);
     final maxSquareMeters =
@@ -199,8 +222,13 @@ class _ListingScreenState extends State<ListingScreen> {
     final maxBuildingAge = _parseOptionalInt(_maxBuildingAgeController.text);
     final minBathroomCount = _parseOptionalInt(_minBathroomController.text);
     final minBalconyCount = _parseOptionalInt(_minBalconyController.text);
+    final floorCount = _parseOptionalInt(_floorCountController.text);
+    final floorNumber = _parseOptionalInt(_floorNumberController.text);
 
     return listings.where((listing) {
+      if (!_matchesGeneralSearch(listing, searchQuery)) {
+        return false;
+      }
       if (_dealType != null && listing.dealType != _dealType) {
         return false;
       }
@@ -251,8 +279,67 @@ class _ListingScreenState extends State<ListingScreen> {
           ((listing.balconyCount ?? 0) < minBalconyCount)) {
         return false;
       }
+      if (floorCount != null && listing.floorCount != floorCount) {
+        return false;
+      }
+      if (floorNumber != null && listing.floorNumber != floorNumber) {
+        return false;
+      }
+      if (frontage.trim().isNotEmpty &&
+          !_normalizedContains(listing.frontage ?? '', frontage)) {
+        return false;
+      }
       return true;
     }).toList();
+  }
+
+  bool _matchesGeneralSearch(PropertyListing listing, String query) {
+    if (query.trim().isEmpty) {
+      return true;
+    }
+    final haystack = [
+      listing.displayTitle,
+      listing.buildingName,
+      listing.description,
+      listing.placeName,
+      listing.streetName,
+      listing.blockNo,
+      listing.parcelNo,
+      listing.roomLayout,
+      listing.frontage,
+      listing.housingKind?.label,
+      listing.ownerName,
+      ...listing.ownerPhoneList,
+    ].whereType<String>().join(' ');
+    return _normalizedContains(haystack, query);
+  }
+
+  bool _normalizedContains(String value, String query) {
+    final normalizedValue = _normalizeSearchText(value);
+    final normalizedQuery = _normalizeSearchText(query);
+    if (normalizedQuery.isEmpty) {
+      return true;
+    }
+    if (normalizedValue.contains(normalizedQuery)) {
+      return true;
+    }
+    return normalizedValue.replaceAll(' ', '').contains(
+          normalizedQuery.replaceAll(' ', ''),
+        );
+  }
+
+  String _normalizeSearchText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('\u0307', '')
+        .replaceAll('ç', 'c')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ı', 'i')
+        .replaceAll('ö', 'o')
+        .replaceAll('ş', 's')
+        .replaceAll('ü', 'u')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   int get _activeFilterCount {
@@ -272,6 +359,9 @@ class _ListingScreenState extends State<ListingScreen> {
       _maxBuildingAgeController,
       _minBathroomController,
       _minBalconyController,
+      _floorCountController,
+      _floorNumberController,
+      _frontageController,
     ]) {
       if (controller.text.trim().isNotEmpty) {
         count++;
@@ -288,6 +378,8 @@ class _ListingScreenState extends State<ListingScreen> {
       _placeName = null;
       _streetName = null;
       _housingKind = null;
+      _searchController.clear();
+      _searchOpen = false;
       _blockController.clear();
       _parcelController.clear();
       _roomLayoutController.clear();
@@ -296,6 +388,9 @@ class _ListingScreenState extends State<ListingScreen> {
       _maxBuildingAgeController.clear();
       _minBathroomController.clear();
       _minBalconyController.clear();
+      _floorCountController.clear();
+      _floorNumberController.clear();
+      _frontageController.clear();
     });
   }
 
@@ -325,6 +420,12 @@ class _ListingScreenState extends State<ListingScreen> {
         TextEditingController(text: _minBathroomController.text);
     final minBalconyController =
         TextEditingController(text: _minBalconyController.text);
+    final floorCountController =
+        TextEditingController(text: _floorCountController.text);
+    final floorNumberController =
+        TextEditingController(text: _floorNumberController.text);
+    final frontageController =
+        TextEditingController(text: _frontageController.text);
 
     final applied = await showModalBottomSheet<bool>(
       context: context,
@@ -388,6 +489,9 @@ class _ListingScreenState extends State<ListingScreen> {
                               maxBuildingAgeController.clear();
                               minBathroomController.clear();
                               minBalconyController.clear();
+                              floorCountController.clear();
+                              floorNumberController.clear();
+                              frontageController.clear();
                               housingKind = null;
                             }
                           });
@@ -532,6 +636,38 @@ class _ListingScreenState extends State<ListingScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: floorCountController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Toplam kat',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: floorNumberController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Bulunduğu kat',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: frontageController,
+                          decoration: const InputDecoration(
+                            labelText: 'Cephe',
+                            hintText: 'Güney, kuzey-doğu...',
+                          ),
+                        ),
                       ],
                       if (type == PropertyType.land ||
                           type == PropertyType.field) ...[
@@ -579,6 +715,9 @@ class _ListingScreenState extends State<ListingScreen> {
                                   maxBuildingAgeController.clear();
                                   minBathroomController.clear();
                                   minBalconyController.clear();
+                                  floorCountController.clear();
+                                  floorNumberController.clear();
+                                  frontageController.clear();
                                 });
                               },
                               icon: const Icon(Icons.filter_alt_off_outlined),
@@ -621,6 +760,9 @@ class _ListingScreenState extends State<ListingScreen> {
         _maxBuildingAgeController.text = maxBuildingAgeController.text;
         _minBathroomController.text = minBathroomController.text;
         _minBalconyController.text = minBalconyController.text;
+        _floorCountController.text = floorCountController.text;
+        _floorNumberController.text = floorNumberController.text;
+        _frontageController.text = frontageController.text;
       });
     }
 
@@ -632,6 +774,9 @@ class _ListingScreenState extends State<ListingScreen> {
     maxBuildingAgeController.dispose();
     minBathroomController.dispose();
     minBalconyController.dispose();
+    floorCountController.dispose();
+    floorNumberController.dispose();
+    frontageController.dispose();
   }
 
   int? _parseOptionalInt(String value) {
@@ -646,14 +791,22 @@ class _ListingScreenState extends State<ListingScreen> {
 class _ListingToolbar extends StatelessWidget {
   const _ListingToolbar({
     required this.view,
+    required this.searchOpen,
+    required this.searchController,
     required this.activeFilterCount,
     required this.onViewChanged,
+    required this.onSearchChanged,
+    required this.onSearchToggle,
     required this.onFilterPressed,
   });
 
   final _ListingsView view;
+  final bool searchOpen;
+  final TextEditingController searchController;
   final int activeFilterCount;
   final ValueChanged<_ListingsView> onViewChanged;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onSearchToggle;
   final VoidCallback onFilterPressed;
 
   @override
@@ -663,36 +816,72 @@ class _ListingToolbar extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: SegmentedButton<_ListingsView>(
-                segments: _ListingsView.values
-                    .map(
-                      (view) => ButtonSegment<_ListingsView>(
-                        value: view,
-                        icon: Icon(
-                          view == _ListingsView.list
-                              ? Icons.view_list_outlined
-                              : Icons.map_outlined,
+            Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<_ListingsView>(
+                    segments: _ListingsView.values
+                        .map(
+                          (view) => ButtonSegment<_ListingsView>(
+                            value: view,
+                            icon: Icon(
+                              view == _ListingsView.list
+                                  ? Icons.view_list_outlined
+                                  : Icons.map_outlined,
+                            ),
+                            label: Text(view.label),
+                          ),
+                        )
+                        .toList(),
+                    selected: {view},
+                    onSelectionChanged: (value) => onViewChanged(value.first),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  tooltip: searchController.text.isNotEmpty
+                      ? 'Aramayı temizle'
+                      : 'Ara',
+                  onPressed: onSearchToggle,
+                  icon: Icon(
+                    searchController.text.isNotEmpty
+                        ? Icons.close
+                        : Icons.search,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Badge.count(
+                  count: activeFilterCount,
+                  isLabelVisible: activeFilterCount > 0,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Filtrele',
+                    onPressed: onFilterPressed,
+                    icon: const Icon(Icons.tune_outlined),
+                  ),
+                ),
+              ],
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: searchOpen
+                  ? Padding(
+                      key: const ValueKey('listing-search'),
+                      padding: const EdgeInsets.only(top: 10),
+                      child: TextField(
+                        controller: searchController,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          labelText: 'İlanlarda ara',
+                          hintText: 'Bina, site, açıklama, cephe...',
+                          prefixIcon: Icon(Icons.search),
                         ),
-                        label: Text(view.label),
+                        onChanged: onSearchChanged,
                       ),
                     )
-                    .toList(),
-                selected: {view},
-                onSelectionChanged: (value) => onViewChanged(value.first),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Badge.count(
-              count: activeFilterCount,
-              isLabelVisible: activeFilterCount > 0,
-              child: IconButton.filledTonal(
-                tooltip: 'Filtrele',
-                onPressed: onFilterPressed,
-                icon: const Icon(Icons.tune_outlined),
-              ),
+                  : const SizedBox.shrink(key: ValueKey('listing-search-off')),
             ),
           ],
         ),
@@ -805,18 +994,15 @@ class _ListingMapViewState extends State<_ListingMapView> {
             ),
             MarkerLayer(
               markers: locatedListings.map((listing) {
+                final style = _styleForListing(listing);
                 return Marker(
                   point: LatLng(listing.latitude!, listing.longitude!),
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
                   alignment: Alignment.topCenter,
                   child: GestureDetector(
                     onTap: () => _showListingPreview(listing),
-                    child: Icon(
-                      Icons.location_pin,
-                      size: 46,
-                      color: _colorForType(listing.type),
-                    ),
+                    child: _MapMarkerBadge(style: style),
                   ),
                 );
               }).toList(),
@@ -860,6 +1046,19 @@ class _ListingMapViewState extends State<_ListingMapView> {
               ),
             ),
           ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: IconButton.filledTonal(
+                tooltip: 'Harita açıklaması',
+                onPressed: _showMapLegend,
+                icon: const Icon(Icons.info_outline),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -891,14 +1090,153 @@ class _ListingMapViewState extends State<_ListingMapView> {
     );
   }
 
-  Color _colorForType(PropertyType type) {
-    switch (type) {
+  void _showMapLegend() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => const _MapLegendSheet(),
+    );
+  }
+
+  _MapMarkerStyle _styleForListing(PropertyListing listing) {
+    switch (listing.type) {
       case PropertyType.apartment:
-        return const Color(0xFF156C5B);
+        switch (listing.housingKind) {
+          case HousingKind.detached:
+            return _mapMarkerDetached;
+          case HousingKind.site:
+            return _mapMarkerSite;
+          case HousingKind.apartment:
+          case null:
+            return _mapMarkerApartment;
+        }
       case PropertyType.land:
-        return const Color(0xFF8A5A18);
+        return _mapMarkerLand;
       case PropertyType.field:
-        return const Color(0xFF407A36);
+        return _mapMarkerField;
     }
   }
 }
+
+class _MapLegendSheet extends StatelessWidget {
+  const _MapLegendSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = [
+      _mapMarkerApartment,
+      _mapMarkerSite,
+      _mapMarkerDetached,
+      _mapMarkerLand,
+      _mapMarkerField,
+    ];
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Harita açıklaması',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            ...styles.map(
+              (style) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: _MapMarkerBadge(style: style, compact: true),
+                ),
+                title: Text(style.label),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapMarkerBadge extends StatelessWidget {
+  const _MapMarkerBadge({
+    required this.style,
+    this.compact = false,
+  });
+
+  final _MapMarkerStyle style;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 34.0 : 46.0;
+    final iconSize = compact ? 19.0 : 25.0;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: style.color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.surface,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Icon(style.icon, color: Colors.white, size: iconSize),
+    );
+  }
+}
+
+class _MapMarkerStyle {
+  const _MapMarkerStyle({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+}
+
+const _mapMarkerApartment = _MapMarkerStyle(
+  label: 'Apartman',
+  icon: Icons.apartment_outlined,
+  color: Color(0xFF156C5B),
+);
+
+const _mapMarkerSite = _MapMarkerStyle(
+  label: 'Site',
+  icon: Icons.apartment_outlined,
+  color: Color(0xFF6D4BC3),
+);
+
+const _mapMarkerDetached = _MapMarkerStyle(
+  label: 'Müstakil',
+  icon: Icons.home_outlined,
+  color: Color(0xFF2F7D32),
+);
+
+const _mapMarkerLand = _MapMarkerStyle(
+  label: 'Arsa',
+  icon: Icons.terrain_outlined,
+  color: Color(0xFF8A5A18),
+);
+
+const _mapMarkerField = _MapMarkerStyle(
+  label: 'Tarla',
+  icon: Icons.agriculture_outlined,
+  color: Color(0xFF407A36),
+);

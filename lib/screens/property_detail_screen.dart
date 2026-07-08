@@ -103,7 +103,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   const SizedBox(height: 18),
                   _PublicInfoGrid(listing: _listing, soldView: widget.soldView),
                   if ((_listing.ownerName ?? '').trim().isNotEmpty ||
-                      (_listing.ownerPhone ?? '').trim().isNotEmpty) ...[
+                      _listing.ownerPhoneList.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     _OwnerInfo(listing: _listing, onCall: _callOwner),
                   ],
@@ -190,9 +190,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     }
   }
 
-  Future<void> _callOwner() async {
-    final phone = _listing.ownerPhone?.trim();
-    if (phone == null || phone.isEmpty) {
+  Future<void> _callOwner(String phoneNumber) async {
+    final phone = phoneNumber.trim();
+    if (phone.isEmpty) {
       return;
     }
 
@@ -571,6 +571,30 @@ class _PublicInfoGrid extends StatelessWidget {
                   value: listing.housingKind!.label,
                 ),
               ),
+            if (listing.floorCount != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Toplam kat',
+                  value: listing.floorCount.toString(),
+                ),
+              ),
+            if (listing.floorNumber != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Bulunduğu kat',
+                  value: listing.floorNumber.toString(),
+                ),
+              ),
+            if (listing.frontage?.trim().isNotEmpty == true)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Cephe',
+                  value: listing.frontage!.trim(),
+                ),
+              ),
           ],
         );
       },
@@ -585,13 +609,13 @@ class _OwnerInfo extends StatelessWidget {
   });
 
   final PropertyListing listing;
-  final VoidCallback onCall;
+  final ValueChanged<String> onCall;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ownerName = listing.ownerName?.trim();
-    final ownerPhone = listing.ownerPhone?.trim();
+    final ownerPhones = listing.ownerPhoneList;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -600,6 +624,7 @@ class _OwnerInfo extends StatelessWidget {
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.person_outline, color: theme.colorScheme.primary),
           const SizedBox(width: 10),
@@ -617,23 +642,38 @@ class _OwnerInfo extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                if (ownerPhone != null && ownerPhone.isNotEmpty)
-                  Text(
-                    ownerPhone,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                if (ownerPhones.isNotEmpty)
+                  ...ownerPhones.map(
+                    (phone) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        phone,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ),
               ],
             ),
           ),
-          if (ownerPhone != null && ownerPhone.isNotEmpty)
-            IconButton.filledTonal(
-              tooltip: 'Ara',
-              onPressed: onCall,
-              icon: const Icon(Icons.call_outlined),
+          if (ownerPhones.isNotEmpty)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: ownerPhones
+                  .map(
+                    (phone) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: IconButton.filledTonal(
+                        tooltip: '$phone ara',
+                        onPressed: () => onCall(phone),
+                        icon: const Icon(Icons.call_outlined),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
         ],
       ),

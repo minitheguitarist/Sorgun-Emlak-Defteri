@@ -19,10 +19,14 @@ class PropertyListing {
     this.bathroomCount,
     this.balconyCount,
     this.housingKind,
+    this.floorCount,
+    this.floorNumber,
+    this.frontage,
     this.latitude,
     this.longitude,
     this.ownerName,
     this.ownerPhone,
+    this.ownerPhones = const [],
     required this.costPrice,
     required this.salePrice,
     required this.description,
@@ -49,10 +53,14 @@ class PropertyListing {
   final int? bathroomCount;
   final int? balconyCount;
   final HousingKind? housingKind;
+  final int? floorCount;
+  final int? floorNumber;
+  final String? frontage;
   final double? latitude;
   final double? longitude;
   final String? ownerName;
   final String? ownerPhone;
+  final List<String> ownerPhones;
   final double costPrice;
   final double salePrice;
   final String description;
@@ -77,6 +85,25 @@ class PropertyListing {
   double get finalProfit => finalPrice - costPrice;
 
   bool get hasLocation => latitude != null && longitude != null;
+
+  List<String> get ownerPhoneList {
+    final phones = <String>[];
+    void addPhone(String? value) {
+      final trimmed = value?.trim();
+      if (trimmed == null || trimmed.isEmpty) {
+        return;
+      }
+      if (!phones.contains(trimmed)) {
+        phones.add(trimmed);
+      }
+    }
+
+    for (final phone in ownerPhones) {
+      addPhone(phone);
+    }
+    addPhone(ownerPhone);
+    return phones;
+  }
 
   double get finalProfitPercent {
     if (finalPrice <= 0) {
@@ -144,10 +171,14 @@ class PropertyListing {
     int? bathroomCount,
     int? balconyCount,
     HousingKind? housingKind,
+    int? floorCount,
+    int? floorNumber,
+    String? frontage,
     double? latitude,
     double? longitude,
     String? ownerName,
     String? ownerPhone,
+    List<String>? ownerPhones,
     double? costPrice,
     double? salePrice,
     String? description,
@@ -174,10 +205,14 @@ class PropertyListing {
       bathroomCount: bathroomCount ?? this.bathroomCount,
       balconyCount: balconyCount ?? this.balconyCount,
       housingKind: housingKind ?? this.housingKind,
+      floorCount: floorCount ?? this.floorCount,
+      floorNumber: floorNumber ?? this.floorNumber,
+      frontage: frontage ?? this.frontage,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       ownerName: ownerName ?? this.ownerName,
       ownerPhone: ownerPhone ?? this.ownerPhone,
+      ownerPhones: ownerPhones ?? this.ownerPhones,
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
       description: description ?? this.description,
@@ -207,10 +242,14 @@ class PropertyListing {
       'bathroom_count': bathroomCount,
       'balcony_count': balconyCount,
       'housing_kind': housingKind?.name,
+      'floor_count': floorCount,
+      'floor_number': floorNumber,
+      'frontage': frontage,
       'latitude': latitude,
       'longitude': longitude,
       'owner_name': ownerName,
-      'owner_phone': ownerPhone,
+      'owner_phone': ownerPhone ?? _firstPhone(ownerPhones),
+      'owner_phones_json': jsonEncode(ownerPhoneList),
       'cost_price': costPrice,
       'sale_price': salePrice,
       'description': description,
@@ -225,6 +264,14 @@ class PropertyListing {
 
   factory PropertyListing.fromMap(Map<String, Object?> map) {
     final photos = jsonDecode(map['photos_json'] as String? ?? '[]');
+    final ownerPhones = _decodeStringList(map['owner_phones_json']);
+    final ownerPhone = map['owner_phone'] as String?;
+    if (ownerPhone != null && ownerPhone.trim().isNotEmpty) {
+      final trimmed = ownerPhone.trim();
+      if (!ownerPhones.contains(trimmed)) {
+        ownerPhones.insert(0, trimmed);
+      }
+    }
     return PropertyListing(
       id: map['id'] as int?,
       type: PropertyType.fromStorage(map['type'] as String),
@@ -241,10 +288,14 @@ class PropertyListing {
       bathroomCount: (map['bathroom_count'] as num?)?.toInt(),
       balconyCount: (map['balcony_count'] as num?)?.toInt(),
       housingKind: HousingKind.fromStorage(map['housing_kind'] as String?),
+      floorCount: (map['floor_count'] as num?)?.toInt(),
+      floorNumber: (map['floor_number'] as num?)?.toInt(),
+      frontage: map['frontage'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       ownerName: map['owner_name'] as String?,
-      ownerPhone: map['owner_phone'] as String?,
+      ownerPhone: ownerPhone,
+      ownerPhones: ownerPhones,
       costPrice: (map['cost_price'] as num).toDouble(),
       salePrice: (map['sale_price'] as num).toDouble(),
       description: map['description'] as String? ?? '',
@@ -257,5 +308,34 @@ class PropertyListing {
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
+  }
+
+  static String? _firstPhone(List<String> phones) {
+    for (final phone in phones) {
+      final trimmed = phone.trim();
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    return null;
+  }
+
+  static List<String> _decodeStringList(Object? value) {
+    if (value == null) {
+      return <String>[];
+    }
+    try {
+      final decoded = jsonDecode(value as String? ?? '[]');
+      if (decoded is! List) {
+        return <String>[];
+      }
+      return decoded
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toSet()
+          .toList();
+    } catch (_) {
+      return <String>[];
+    }
   }
 }

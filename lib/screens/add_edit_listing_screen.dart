@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/property_listing.dart';
 import '../models/property_type.dart';
 import '../services/address_repository.dart';
 import '../services/app_database.dart';
+import '../services/contact_picker_service.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
 import '../services/photo_service.dart';
@@ -39,6 +41,7 @@ class AddEditListingScreen extends StatefulWidget {
 class _AddEditListingScreenState extends State<AddEditListingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _reverseGeocodingService = const ReverseGeocodingService();
+  final _contactPickerService = const ContactPickerService();
   late Future<AddressBook> _addressFuture;
   late PropertyType? _type;
   late DealType? _dealType;
@@ -53,6 +56,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _buildingAgeController;
   late final TextEditingController _bathroomCountController;
   late final TextEditingController _balconyCountController;
+  late final TextEditingController _floorCountController;
+  late final TextEditingController _floorNumberController;
+  late final TextEditingController _frontageController;
   late HousingKind? _housingKind;
   late final TextEditingController _ownerNameController;
   late final TextEditingController _ownerPhoneController;
@@ -65,6 +71,11 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   bool _saving = false;
 
   bool get _isEditing => widget.listing != null;
+
+  bool get _showsFloorFields =>
+      _type == PropertyType.apartment &&
+      (_housingKind == HousingKind.apartment ||
+          _housingKind == HousingKind.site);
 
   @override
   void initState() {
@@ -96,9 +107,18 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _balconyCountController = TextEditingController(
       text: listing?.balconyCount?.toString() ?? '',
     );
+    _floorCountController = TextEditingController(
+      text: listing?.floorCount?.toString() ?? '',
+    );
+    _floorNumberController = TextEditingController(
+      text: listing?.floorNumber?.toString() ?? '',
+    );
+    _frontageController = TextEditingController(text: listing?.frontage);
     _housingKind = listing?.housingKind;
     _ownerNameController = TextEditingController(text: listing?.ownerName);
-    _ownerPhoneController = TextEditingController(text: listing?.ownerPhone);
+    _ownerPhoneController = TextEditingController(
+      text: listing == null ? '' : listing.ownerPhoneList.join('\n'),
+    );
     _costController = TextEditingController(
       text: listing == null ? '' : listing.costPrice.toStringAsFixed(0),
     );
@@ -125,6 +145,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _buildingAgeController.dispose();
     _bathroomCountController.dispose();
     _balconyCountController.dispose();
+    _floorCountController.dispose();
+    _floorNumberController.dispose();
+    _frontageController.dispose();
     _ownerNameController.dispose();
     _ownerPhoneController.dispose();
     _costController.dispose();
@@ -277,18 +300,13 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
           ),
           const SizedBox(height: 12),
           SearchSelectionField(
-            label: _placeKind == PlaceKind.village
-                ? 'Cadde/Sokak/Yol (isteğe bağlı)'
-                : 'Cadde/Sokak/Yol',
+            label: 'Cadde/Sokak/Yol (isteğe bağlı)',
             value:
                 addressBook.streets.contains(_streetName) ? _streetName : null,
             options: addressBook.streets,
             emptyText: 'Seçilmedi',
             prefixIcon: Icons.signpost_outlined,
-            requiredMessage: _placeKind == PlaceKind.village
-                ? null
-                : 'Cadde, sokak veya yol seçin.',
-            allowClear: _placeKind == PlaceKind.village,
+            allowClear: true,
             clearText: 'Seçilmedi',
             onChanged: (value) => setState(() => _streetName = value),
           ),
@@ -438,11 +456,56 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                                       )
                                       .toList(),
                                   onChanged: (value) {
-                                    setState(() => _housingKind = value);
+                                    setState(() {
+                                      _housingKind = value;
+                                      if (value == HousingKind.detached) {
+                                        _floorCountController.clear();
+                                        _floorNumberController.clear();
+                                      }
+                                    });
                                   },
                                 ),
                               ),
                             ],
+                          ),
+                          if (_showsFloorFields) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _floorCountController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Toplam kat',
+                                      prefixIcon: Icon(Icons.layers_outlined),
+                                    ),
+                                    validator: _optionalIntValidator,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _floorNumberController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Bulunduğu kat',
+                                      prefixIcon: Icon(Icons.stairs_outlined),
+                                    ),
+                                    validator: _optionalIntValidator,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _frontageController,
+                            decoration: const InputDecoration(
+                              labelText: 'Cephe (isteğe bağlı)',
+                              hintText: 'Güney, kuzey-doğu...',
+                              prefixIcon: Icon(Icons.explore_outlined),
+                            ),
                           ),
                         ],
                       )
@@ -490,6 +553,15 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                       ),
           ),
           const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _saving ? null : _pickOwnerFromContacts,
+              icon: const Icon(Icons.contacts_outlined),
+              label: const Text('Rehberden seç'),
+            ),
+          ),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _ownerNameController,
             decoration: const InputDecoration(
@@ -501,8 +573,11 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
           TextFormField(
             controller: _ownerPhoneController,
             keyboardType: TextInputType.phone,
+            minLines: 1,
+            maxLines: 4,
             decoration: const InputDecoration(
-              labelText: 'Mülk sahibi telefonu (isteğe bağlı)',
+              labelText: 'Mülk sahibi telefonları (isteğe bağlı)',
+              hintText: 'Her numarayı ayrı satıra yazabilirsiniz',
               prefixIcon: Icon(Icons.phone_outlined),
             ),
           ),
@@ -618,6 +693,17 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     return int.tryParse(raw);
   }
 
+  List<String> _parsePhoneList(String value) {
+    final phones = <String>[];
+    for (final part in value.split(RegExp(r'[\n,;]+'))) {
+      final phone = part.trim();
+      if (phone.isNotEmpty && !phones.contains(phone)) {
+        phones.add(phone);
+      }
+    }
+    return phones;
+  }
+
   Future<void> _pickGallery() async {
     try {
       final paths = await widget.photoService.pickFromGallery();
@@ -642,6 +728,30 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     }
   }
 
+  Future<void> _pickOwnerFromContacts() async {
+    try {
+      final contact = await _contactPickerService.pickContact();
+      if (!mounted || contact == null || contact.isEmpty) {
+        return;
+      }
+      setState(() {
+        if (contact.name.isNotEmpty) {
+          _ownerNameController.text = contact.name;
+        }
+        if (contact.phones.isNotEmpty) {
+          _ownerPhoneController.text = contact.phones.join('\n');
+        }
+      });
+    } on PlatformException catch (error) {
+      final message = error.code == 'permission_denied'
+          ? 'Rehber izni verilmedi.'
+          : 'Rehberden kişi seçilemedi.';
+      _showSnack(message);
+    } catch (error) {
+      _showSnack('Rehberden kişi seçilemedi: $error');
+    }
+  }
+
   Future<void> _save() async {
     if (_dealType == null) {
       _showSnack('Satılık veya kiralık seçin.');
@@ -658,6 +768,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     try {
       final now = DateTime.now();
       final previous = widget.listing;
+      final ownerPhones = _parsePhoneList(_ownerPhoneController.text);
+      final hasFloorFields = _housingKind == HousingKind.apartment ||
+          _housingKind == HousingKind.site;
+      final frontage = _frontageController.text.trim();
       final listing = PropertyListing(
         id: previous?.id,
         type: _type!,
@@ -690,14 +804,22 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             ? _parseOptionalInt(_balconyCountController.text)
             : null,
         housingKind: _type == PropertyType.apartment ? _housingKind : null,
+        floorCount: _type == PropertyType.apartment && hasFloorFields
+            ? _parseOptionalInt(_floorCountController.text)
+            : null,
+        floorNumber: _type == PropertyType.apartment && hasFloorFields
+            ? _parseOptionalInt(_floorNumberController.text)
+            : null,
+        frontage: _type == PropertyType.apartment && frontage.isNotEmpty
+            ? frontage
+            : null,
         latitude: _latitude,
         longitude: _longitude,
         ownerName: _ownerNameController.text.trim().isEmpty
             ? null
             : _ownerNameController.text.trim(),
-        ownerPhone: _ownerPhoneController.text.trim().isEmpty
-            ? null
-            : _ownerPhoneController.text.trim(),
+        ownerPhone: ownerPhones.isEmpty ? null : ownerPhones.first,
+        ownerPhones: ownerPhones,
         costPrice: parseMoneyInput(_costController.text),
         salePrice: parseMoneyInput(_saleController.text),
         description: _descriptionController.text.trim(),
@@ -1015,14 +1137,12 @@ class _AddressSuggestionDialogState extends State<_AddressSuggestionDialog> {
             ),
             const SizedBox(height: 12),
             SearchSelectionField(
-              label: _placeKind == PlaceKind.village
-                  ? 'Cadde/Sokak/Yol (isteğe bağlı)'
-                  : 'Cadde/Sokak/Yol',
+              label: 'Cadde/Sokak/Yol (isteğe bağlı)',
               value: widget.addressBook.streets.contains(_streetName)
                   ? _streetName
                   : null,
               options: widget.addressBook.streets,
-              allowClear: _placeKind == PlaceKind.village,
+              allowClear: true,
               clearText: 'Seçilmedi',
               onChanged: (value) => setState(() => _streetName = value),
             ),
@@ -1035,8 +1155,7 @@ class _AddressSuggestionDialogState extends State<_AddressSuggestionDialog> {
           child: const Text('Vazgeç'),
         ),
         FilledButton(
-          onPressed: _placeName == null ||
-                  (_placeKind == PlaceKind.neighborhood && _streetName == null)
+          onPressed: _placeName == null
               ? null
               : () => Navigator.of(context).pop(
                     _AddressSelectionResult(

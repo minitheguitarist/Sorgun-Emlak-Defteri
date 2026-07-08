@@ -126,9 +126,13 @@ void main() {
       buildingAge: 8,
       bathroomCount: 2,
       balconyCount: 1,
-      housingKind: HousingKind.apartment,
+      housingKind: HousingKind.site,
+      floorCount: 12,
+      floorNumber: 5,
+      frontage: 'Güney Cephe',
       ownerName: 'Ali Veli',
       ownerPhone: '05551234567',
+      ownerPhones: const ['05551234567', '05557654321'],
       costPrice: 2000,
       salePrice: 15000,
       description: '',
@@ -143,8 +147,12 @@ void main() {
     expect(restored.buildingAge, 8);
     expect(restored.bathroomCount, 2);
     expect(restored.balconyCount, 1);
-    expect(restored.housingKind, HousingKind.apartment);
+    expect(restored.housingKind, HousingKind.site);
+    expect(restored.floorCount, 12);
+    expect(restored.floorNumber, 5);
+    expect(restored.frontage, 'Güney Cephe');
     expect(restored.ownerName, 'Ali Veli');
     expect(restored.ownerPhone, '05551234567');
+    expect(restored.ownerPhoneList, ['05551234567', '05557654321']);
   });
 }

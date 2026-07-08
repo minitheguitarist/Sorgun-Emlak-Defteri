@@ -78,12 +78,15 @@ enum PlaceKind {
 
 enum HousingKind {
   apartment,
+  site,
   detached;
 
   String get label {
     switch (this) {
       case HousingKind.apartment:
         return 'Apartman';
+      case HousingKind.site:
+        return 'Site';
       case HousingKind.detached:
         return 'Müstakil';
     }

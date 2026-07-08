@@ -1,8 +1,11 @@
 package com.sorgunemlak.defter
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.ContactsContract
 import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,6 +15,7 @@ import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
     private var pendingPickerResult: MethodChannel.Result? = null
+    private var pendingContactResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -21,6 +25,15 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "pickSedefPackage" -> openPackagePicker(result)
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.sorgunemlak.defter/contact_picker"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pickContact" -> requestContactPicker(result)
                 else -> result.notImplemented()
             }
         }
@@ -45,7 +58,47 @@ class MainActivity : FlutterActivity() {
             return
         }
 
+        if (requestCode == contactPickerRequestCode) {
+            val result = pendingContactResult ?: return
+            pendingContactResult = null
+
+            val uri = data?.data
+            if (resultCode != Activity.RESULT_OK || uri == null) {
+                result.success(null)
+                return
+            }
+
+            try {
+                result.success(readContact(uri))
+            } catch (error: Exception) {
+                result.error("contact_read_failed", error.message, null)
+            }
+            return
+        }
+
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != contactPermissionRequestCode) {
+            return
+        }
+
+        if (grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            openContactPicker()
+            return
+        }
+
+        val result = pendingContactResult ?: return
+        pendingContactResult = null
+        result.error("permission_denied", "Rehber izni verilmedi.", null)
     }
 
     private fun openPackagePicker(result: MethodChannel.Result) {
@@ -71,6 +124,41 @@ class MainActivity : FlutterActivity() {
             Intent.createChooser(intent, "Paylaşım paketi seç"),
             packagePickerRequestCode
         )
+    }
+
+    private fun requestContactPicker(result: MethodChannel.Result) {
+        if (pendingContactResult != null) {
+            result.error("picker_busy", "Rehber seçici zaten açık.", null)
+            return
+        }
+
+        pendingContactResult = result
+        if (android.os.Build.VERSION.SDK_INT < 23 ||
+            checkSelfPermission(Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            openContactPicker()
+            return
+        }
+
+        requestPermissions(
+            arrayOf(Manifest.permission.READ_CONTACTS),
+            contactPermissionRequestCode
+        )
+    }
+
+    private fun openContactPicker() {
+        val intent = Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI)
+        try {
+            startActivityForResult(
+                Intent.createChooser(intent, "Mülk sahibi seç"),
+                contactPickerRequestCode
+            )
+        } catch (error: Exception) {
+            val result = pendingContactResult ?: return
+            pendingContactResult = null
+            result.error("picker_unavailable", error.message, null)
+        }
     }
 
     private fun copyPackageToCache(uri: Uri): String {
@@ -102,11 +190,73 @@ class MainActivity : FlutterActivity() {
         return null
     }
 
+    private fun readContact(uri: Uri): Map<String, Any> {
+        var contactId: String? = null
+        var displayName = ""
+        var hasPhoneNumber = false
+
+        contentResolver.query(
+            uri,
+            arrayOf(
+                ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.DISPLAY_NAME,
+                ContactsContract.Contacts.HAS_PHONE_NUMBER
+            ),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID)
+                val nameIndex = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
+                val hasPhoneIndex =
+                    cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                if (idIndex >= 0) {
+                    contactId = cursor.getString(idIndex)
+                }
+                if (nameIndex >= 0) {
+                    displayName = cursor.getString(nameIndex) ?: ""
+                }
+                if (hasPhoneIndex >= 0) {
+                    hasPhoneNumber = cursor.getInt(hasPhoneIndex) > 0
+                }
+            }
+        }
+
+        val phones = mutableListOf<String>()
+        val id = contactId
+        if (id != null && hasPhoneNumber) {
+            contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                arrayOf(id),
+                null
+            )?.use { cursor ->
+                val numberIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                while (numberIndex >= 0 && cursor.moveToNext()) {
+                    val phone = cursor.getString(numberIndex)?.trim()
+                    if (!phone.isNullOrEmpty() && !phones.contains(phone)) {
+                        phones.add(phone)
+                    }
+                }
+            }
+        }
+
+        return mapOf(
+            "name" to displayName,
+            "phones" to phones
+        )
+    }
+
     private fun safeFileName(value: String): String {
         return value.replace(Regex("[^A-Za-z0-9._-]"), "_")
     }
 
     companion object {
         private const val packagePickerRequestCode = 6417
+        private const val contactPickerRequestCode = 6418
+        private const val contactPermissionRequestCode = 6419
     }
 }
