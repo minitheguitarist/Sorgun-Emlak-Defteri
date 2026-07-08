@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/price_history.dart';
 import '../models/property_listing.dart';
@@ -8,6 +11,7 @@ import '../models/property_type.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
+import '../widgets/listing_card.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   const PropertyDetailScreen({
@@ -98,12 +102,18 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ),
                   const SizedBox(height: 18),
                   _PublicInfoGrid(listing: _listing, soldView: widget.soldView),
+                  if ((_listing.ownerName ?? '').trim().isNotEmpty ||
+                      (_listing.ownerPhone ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _OwnerInfo(listing: _listing, onCall: _callOwner),
+                  ],
                   if (_listing.hasLocation) ...[
                     const SizedBox(height: 12),
                     _LocationActions(
                       listing: _listing,
                       onOpen: _openLocation,
                       onShare: _shareLocation,
+                      onNearby: _showNearbyOptions,
                     ),
                   ],
                   const SizedBox(height: 18),
@@ -178,6 +188,144 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         _showSnack('Konum paylaşılamadı.');
       }
     }
+  }
+
+  Future<void> _callOwner() async {
+    final phone = _listing.ownerPhone?.trim();
+    if (phone == null || phone.isEmpty) {
+      return;
+    }
+
+    final uri = Uri(scheme: 'tel', path: phone);
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened) {
+        return;
+      }
+    } catch (_) {
+      // Fall back to copy below.
+    }
+
+    await Clipboard.setData(ClipboardData(text: phone));
+    if (mounted) {
+      _showSnack('Telefon numarası kopyalandı.');
+    }
+  }
+
+  Future<void> _showNearbyOptions() async {
+    final radius = await showModalBottomSheet<double>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.near_me_outlined),
+              title: const Text('500 metre içindeki ilanlar'),
+              onTap: () => Navigator.of(context).pop(500),
+            ),
+            ListTile(
+              leading: const Icon(Icons.explore_outlined),
+              title: const Text('1 km içindeki ilanlar'),
+              onTap: () => Navigator.of(context).pop(1000),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (radius == null) {
+      return;
+    }
+    await _showNearbyListings(radius);
+  }
+
+  Future<void> _showNearbyListings(double radiusMeters) async {
+    final latitude = _listing.latitude;
+    final longitude = _listing.longitude;
+    if (latitude == null || longitude == null) {
+      return;
+    }
+
+    final listings = await widget.database.getActiveListings();
+    final nearby = listings
+        .where((item) => item.id != _listing.id && item.hasLocation)
+        .map(
+          (item) => MapEntry(
+            item,
+            _distanceMeters(
+              latitude,
+              longitude,
+              item.latitude!,
+              item.longitude!,
+            ),
+          ),
+        )
+        .where((entry) => entry.value <= radiusMeters)
+        .toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: nearby.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  '${radiusMeters >= 1000 ? '1 km' : '500 m'} içinde başka aktif ilan yok.',
+                  textAlign: TextAlign.center,
+                ),
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: nearby.length,
+                itemBuilder: (context, index) {
+                  final item = nearby[index].key;
+                  final distance = nearby[index].value;
+                  return ListingCard(
+                    listing: item,
+                    trailing: Text('${distance.round()} m'),
+                    onTap: () {
+                      final navigator = Navigator.of(this.context);
+                      Navigator.of(context).pop();
+                      navigator.pushReplacement(
+                        MaterialPageRoute<void>(
+                          builder: (context) => PropertyDetailScreen(
+                            database: widget.database,
+                            listing: item,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  double _distanceMeters(
+    double startLatitude,
+    double startLongitude,
+    double endLatitude,
+    double endLongitude,
+  ) {
+    const earthRadiusMeters = 6371000.0;
+    final startLat = startLatitude * math.pi / 180;
+    final endLat = endLatitude * math.pi / 180;
+    final deltaLat = (endLatitude - startLatitude) * math.pi / 180;
+    final deltaLon = (endLongitude - startLongitude) * math.pi / 180;
+    final a = math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
+        math.cos(startLat) *
+            math.cos(endLat) *
+            math.sin(deltaLon / 2) *
+            math.sin(deltaLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadiusMeters * c;
   }
 
   void _showSnack(String message) {
@@ -342,6 +490,7 @@ class _PublicInfoGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final price = soldView ? listing.finalPrice : listing.salePrice;
+    final priceLabel = listing.dealType?.priceLabel ?? 'Satış fiyatı';
     return LayoutBuilder(
       builder: (context, constraints) {
         final tileWidth = constraints.maxWidth > 560
@@ -353,9 +502,16 @@ class _PublicInfoGrid extends StatelessWidget {
           children: [
             SizedBox(
               width: tileWidth,
-              child:
-                  _InfoTile(label: 'Satış fiyatı', value: formatMoney(price)),
+              child: _InfoTile(label: priceLabel, value: formatMoney(price)),
             ),
+            if (listing.dealType != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'İlan durumu',
+                  value: listing.dealType!.label,
+                ),
+              ),
             SizedBox(
               width: tileWidth,
               child: _InfoTile(label: 'Tip', value: listing.type.label),
@@ -383,9 +539,104 @@ class _PublicInfoGrid extends StatelessWidget {
                   value: formatArea(listing.squareMeters!),
                 ),
               ),
+            if (listing.buildingAge != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Bina yaşı',
+                  value: listing.buildingAge.toString(),
+                ),
+              ),
+            if (listing.bathroomCount != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Banyo',
+                  value: listing.bathroomCount.toString(),
+                ),
+              ),
+            if (listing.balconyCount != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Balkon',
+                  value: listing.balconyCount.toString(),
+                ),
+              ),
+            if (listing.housingKind != null)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Konut tipi',
+                  value: listing.housingKind!.label,
+                ),
+              ),
           ],
         );
       },
+    );
+  }
+}
+
+class _OwnerInfo extends StatelessWidget {
+  const _OwnerInfo({
+    required this.listing,
+    required this.onCall,
+  });
+
+  final PropertyListing listing;
+  final VoidCallback onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ownerName = listing.ownerName?.trim();
+    final ownerPhone = listing.ownerPhone?.trim();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.person_outline, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ownerName == null || ownerName.isEmpty
+                      ? 'Mülk sahibi'
+                      : ownerName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (ownerPhone != null && ownerPhone.isNotEmpty)
+                  Text(
+                    ownerPhone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (ownerPhone != null && ownerPhone.isNotEmpty)
+            IconButton.filledTonal(
+              tooltip: 'Ara',
+              onPressed: onCall,
+              icon: const Icon(Icons.call_outlined),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -416,11 +667,13 @@ class _LocationActions extends StatelessWidget {
     required this.listing,
     required this.onOpen,
     required this.onShare,
+    required this.onNearby,
   });
 
   final PropertyListing listing;
   final VoidCallback onOpen;
   final VoidCallback onShare;
+  final VoidCallback onNearby;
 
   @override
   Widget build(BuildContext context) {
@@ -474,6 +727,15 @@ class _LocationActions extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onNearby,
+              icon: const Icon(Icons.near_me_outlined),
+              label: const Text('Yakındaki ilanlar'),
+            ),
           ),
         ],
       ),

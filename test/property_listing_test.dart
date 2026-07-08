@@ -111,4 +111,40 @@ void main() {
     expect(restored.longitude, 35.185);
     expect(uri.toString(), contains('query=39.8104%2C35.185'));
   });
+
+  test('yeni ilan detay alanlari map icinde korunur', () {
+    final now = DateTime(2026, 1, 1);
+    final listing = PropertyListing(
+      type: PropertyType.apartment,
+      dealType: DealType.rent,
+      placeKind: PlaceKind.neighborhood,
+      placeName: 'Aydinlikevler Mahallesi',
+      streetName: 'Cumhuriyet Cadde',
+      buildingName: 'Merkez Apartmani',
+      roomLayout: '3+1',
+      squareMeters: 145,
+      buildingAge: 8,
+      bathroomCount: 2,
+      balconyCount: 1,
+      housingKind: HousingKind.apartment,
+      ownerName: 'Ali Veli',
+      ownerPhone: '05551234567',
+      costPrice: 2000,
+      salePrice: 15000,
+      description: '',
+      photoPaths: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = PropertyListing.fromMap(listing.toMap());
+
+    expect(restored.dealType, DealType.rent);
+    expect(restored.buildingAge, 8);
+    expect(restored.bathroomCount, 2);
+    expect(restored.balconyCount, 1);
+    expect(restored.housingKind, HousingKind.apartment);
+    expect(restored.ownerName, 'Ali Veli');
+    expect(restored.ownerPhone, '05551234567');
+  });
 }

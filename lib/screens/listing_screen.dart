@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/property_listing.dart';
 import '../models/property_type.dart';
@@ -9,6 +11,20 @@ import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/search_selection_field.dart';
 import 'property_detail_screen.dart';
+
+enum _ListingsView {
+  list,
+  map;
+
+  String get label {
+    switch (this) {
+      case _ListingsView.list:
+        return 'Liste';
+      case _ListingsView.map:
+        return 'Harita';
+    }
+  }
+}
 
 class ListingScreen extends StatefulWidget {
   const ListingScreen({
@@ -29,15 +45,21 @@ class ListingScreen extends StatefulWidget {
 class _ListingScreenState extends State<ListingScreen> {
   late Future<AddressBook> _addressFuture;
   late Future<List<PropertyListing>> _listingsFuture;
+  _ListingsView _view = _ListingsView.list;
+  DealType? _dealType;
   PropertyType? _type;
   PlaceKind? _placeKind;
   String? _placeName;
   String? _streetName;
+  HousingKind? _housingKind;
   final _blockController = TextEditingController();
   final _parcelController = TextEditingController();
   final _roomLayoutController = TextEditingController();
   final _minSquareMetersController = TextEditingController();
   final _maxSquareMetersController = TextEditingController();
+  final _maxBuildingAgeController = TextEditingController();
+  final _minBathroomController = TextEditingController();
+  final _minBalconyController = TextEditingController();
 
   @override
   void initState() {
@@ -61,6 +83,9 @@ class _ListingScreenState extends State<ListingScreen> {
     _roomLayoutController.dispose();
     _minSquareMetersController.dispose();
     _maxSquareMetersController.dispose();
+    _maxBuildingAgeController.dispose();
+    _minBathroomController.dispose();
+    _minBalconyController.dispose();
     super.dispose();
   }
 
@@ -79,45 +104,11 @@ class _ListingScreenState extends State<ListingScreen> {
         final addressBook = addressSnapshot.data;
         return Column(
           children: [
-            _FilterPanel(
-              addressBook: addressBook,
-              type: _type,
-              placeKind: _placeKind,
-              placeName: _placeName,
-              streetName: _streetName,
-              blockController: _blockController,
-              parcelController: _parcelController,
-              roomLayoutController: _roomLayoutController,
-              minSquareMetersController: _minSquareMetersController,
-              maxSquareMetersController: _maxSquareMetersController,
-              onTypeChanged: (value) => setState(() => _type = value),
-              onPlaceKindChanged: (value) {
-                setState(() {
-                  _placeKind = value;
-                  _placeName = null;
-                  _streetName = null;
-                });
-              },
-              onPlaceNameChanged: (value) {
-                setState(() => _placeName = value);
-              },
-              onStreetChanged: (value) {
-                setState(() => _streetName = value);
-              },
-              onTextFilterChanged: () => setState(() {}),
-              onClear: () {
-                setState(() {
-                  _type = null;
-                  _placeKind = null;
-                  _placeName = null;
-                  _streetName = null;
-                  _blockController.clear();
-                  _parcelController.clear();
-                  _roomLayoutController.clear();
-                  _minSquareMetersController.clear();
-                  _maxSquareMetersController.clear();
-                });
-              },
+            _ListingToolbar(
+              view: _view,
+              activeFilterCount: _activeFilterCount,
+              onViewChanged: (view) => setState(() => _view = view),
+              onFilterPressed: () => _showFilters(addressBook),
             ),
             Expanded(
               child: FutureBuilder<List<PropertyListing>>(
@@ -127,13 +118,34 @@ class _ListingScreenState extends State<ListingScreen> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final listings = _applyFilters(snapshot.data ?? const []);
-                  if (listings.isEmpty) {
+                  final allListings = snapshot.data ?? const [];
+                  final listings = _applyFilters(allListings);
+                  if (allListings.isEmpty) {
                     return const EmptyState(
                       icon: Icons.real_estate_agent_outlined,
                       title: 'Aktif ilan yok',
                       message:
                           'Ekleme ekranından daire, arsa veya tarla kaydı oluşturabilirsiniz.',
+                    );
+                  }
+                  if (listings.isEmpty) {
+                    return EmptyState(
+                      icon: Icons.filter_alt_off_outlined,
+                      title: 'Filtreye uyan ilan yok',
+                      message:
+                          'Filtreleri temizleyerek aktif ilanları yeniden görebilirsiniz.',
+                      action: FilledButton.tonalIcon(
+                        onPressed: _clearFilters,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Filtreleri temizle'),
+                      ),
+                    );
+                  }
+
+                  if (_view == _ListingsView.map) {
+                    return _ListingMapView(
+                      listings: listings,
+                      database: widget.database,
                     );
                   }
 
@@ -150,16 +162,7 @@ class _ListingScreenState extends State<ListingScreen> {
                           padding: EdgeInsets.zero,
                           child: ListingCard(
                             listing: listing,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (context) => PropertyDetailScreen(
-                                    database: widget.database,
-                                    listing: listing,
-                                  ),
-                                ),
-                              );
-                            },
+                            onTap: () => _openListing(listing),
                           ),
                         );
                       },
@@ -174,6 +177,17 @@ class _ListingScreenState extends State<ListingScreen> {
     );
   }
 
+  void _openListing(PropertyListing listing) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PropertyDetailScreen(
+          database: widget.database,
+          listing: listing,
+        ),
+      ),
+    );
+  }
+
   List<PropertyListing> _applyFilters(List<PropertyListing> listings) {
     final block = _blockController.text.trim().toLowerCase();
     final parcel = _parcelController.text.trim().toLowerCase();
@@ -182,8 +196,14 @@ class _ListingScreenState extends State<ListingScreen> {
         parseOptionalNumberInput(_minSquareMetersController.text);
     final maxSquareMeters =
         parseOptionalNumberInput(_maxSquareMetersController.text);
+    final maxBuildingAge = _parseOptionalInt(_maxBuildingAgeController.text);
+    final minBathroomCount = _parseOptionalInt(_minBathroomController.text);
+    final minBalconyCount = _parseOptionalInt(_minBalconyController.text);
 
     return listings.where((listing) {
+      if (_dealType != null && listing.dealType != _dealType) {
+        return false;
+      }
       if (_type != null && listing.type != _type) {
         return false;
       }
@@ -194,6 +214,9 @@ class _ListingScreenState extends State<ListingScreen> {
         return false;
       }
       if (_streetName != null && listing.streetName != _streetName) {
+        return false;
+      }
+      if (_housingKind != null && listing.housingKind != _housingKind) {
         return false;
       }
       if (block.isNotEmpty &&
@@ -216,196 +239,460 @@ class _ListingScreenState extends State<ListingScreen> {
           ((listing.squareMeters ?? double.infinity) > maxSquareMeters)) {
         return false;
       }
+      if (maxBuildingAge != null &&
+          ((listing.buildingAge ?? double.infinity) > maxBuildingAge)) {
+        return false;
+      }
+      if (minBathroomCount != null &&
+          ((listing.bathroomCount ?? 0) < minBathroomCount)) {
+        return false;
+      }
+      if (minBalconyCount != null &&
+          ((listing.balconyCount ?? 0) < minBalconyCount)) {
+        return false;
+      }
       return true;
     }).toList();
   }
+
+  int get _activeFilterCount {
+    var count = 0;
+    if (_dealType != null) count++;
+    if (_type != null) count++;
+    if (_placeKind != null) count++;
+    if (_placeName != null) count++;
+    if (_streetName != null) count++;
+    if (_housingKind != null) count++;
+    for (final controller in [
+      _blockController,
+      _parcelController,
+      _roomLayoutController,
+      _minSquareMetersController,
+      _maxSquareMetersController,
+      _maxBuildingAgeController,
+      _minBathroomController,
+      _minBalconyController,
+    ]) {
+      if (controller.text.trim().isNotEmpty) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _dealType = null;
+      _type = null;
+      _placeKind = null;
+      _placeName = null;
+      _streetName = null;
+      _housingKind = null;
+      _blockController.clear();
+      _parcelController.clear();
+      _roomLayoutController.clear();
+      _minSquareMetersController.clear();
+      _maxSquareMetersController.clear();
+      _maxBuildingAgeController.clear();
+      _minBathroomController.clear();
+      _minBalconyController.clear();
+    });
+  }
+
+  Future<void> _showFilters(AddressBook? addressBook) async {
+    if (addressBook == null) {
+      return;
+    }
+
+    var dealType = _dealType;
+    var type = _type;
+    var placeKind = _placeKind;
+    var placeName = _placeName;
+    var streetName = _streetName;
+    var housingKind = _housingKind;
+    final blockController = TextEditingController(text: _blockController.text);
+    final parcelController =
+        TextEditingController(text: _parcelController.text);
+    final roomLayoutController =
+        TextEditingController(text: _roomLayoutController.text);
+    final minSquareMetersController =
+        TextEditingController(text: _minSquareMetersController.text);
+    final maxSquareMetersController =
+        TextEditingController(text: _maxSquareMetersController.text);
+    final maxBuildingAgeController =
+        TextEditingController(text: _maxBuildingAgeController.text);
+    final minBathroomController =
+        TextEditingController(text: _minBathroomController.text);
+    final minBalconyController =
+        TextEditingController(text: _minBalconyController.text);
+
+    final applied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final places = placeKind == null
+                ? [
+                    ...addressBook.neighborhoods,
+                    ...addressBook.villages,
+                  ]
+                : addressBook.placesFor(placeKind!);
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  8,
+                  18,
+                  MediaQuery.of(context).viewInsets.bottom + 18,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Filtrele',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 14),
+                      _FilterSegment<DealType>(
+                        label: 'Satılık / Kiralık',
+                        values: DealType.values,
+                        selected: dealType,
+                        labelFor: (value) => value.label,
+                        onChanged: (value) {
+                          setSheetState(() => dealType = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _FilterSegment<PropertyType>(
+                        label: 'Mülk tipi',
+                        values: PropertyType.values,
+                        selected: type,
+                        labelFor: (value) => value.label,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            type = value;
+                            if (type == PropertyType.apartment) {
+                              blockController.clear();
+                              parcelController.clear();
+                            } else {
+                              roomLayoutController.clear();
+                              minSquareMetersController.clear();
+                              maxSquareMetersController.clear();
+                              maxBuildingAgeController.clear();
+                              minBathroomController.clear();
+                              minBalconyController.clear();
+                              housingKind = null;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _FilterSegment<PlaceKind>(
+                        label: 'Yer türü',
+                        values: PlaceKind.values,
+                        selected: placeKind,
+                        labelFor: (value) => value.label,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            placeKind = value;
+                            placeName = null;
+                            streetName = null;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SearchSelectionField(
+                        label: 'Mahalle/Köy',
+                        value: places.contains(placeName) ? placeName : null,
+                        options: places,
+                        emptyText: 'Hepsi',
+                        clearText: 'Hepsi',
+                        onChanged: (value) {
+                          setSheetState(() => placeName = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SearchSelectionField(
+                        label: 'Cadde/Sokak/Yol',
+                        value: addressBook.streets.contains(streetName)
+                            ? streetName
+                            : null,
+                        options: addressBook.streets,
+                        emptyText: 'Hepsi',
+                        clearText: 'Hepsi',
+                        onChanged: (value) {
+                          setSheetState(() => streetName = value);
+                        },
+                      ),
+                      if (type == PropertyType.apartment) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: roomLayoutController,
+                          decoration: const InputDecoration(
+                            labelText: 'Oda tipi',
+                            hintText: '2+1',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: minSquareMetersController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Min m²',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: maxSquareMetersController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Max m²',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: maxBuildingAgeController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Max bina yaşı',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: minBathroomController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Min banyo',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: minBalconyController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Min balkon',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: DropdownButtonFormField<HousingKind>(
+                                initialValue: housingKind,
+                                decoration: const InputDecoration(
+                                  labelText: 'Konut tipi',
+                                ),
+                                items: [
+                                  const DropdownMenuItem<HousingKind>(
+                                    value: null,
+                                    child: Text('Hepsi'),
+                                  ),
+                                  ...HousingKind.values.map(
+                                    (kind) => DropdownMenuItem<HousingKind>(
+                                      value: kind,
+                                      child: Text(kind.label),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setSheetState(() => housingKind = value);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (type == PropertyType.land ||
+                          type == PropertyType.field) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: blockController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Ada',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: parcelController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Parsel',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                setSheetState(() {
+                                  dealType = null;
+                                  type = null;
+                                  placeKind = null;
+                                  placeName = null;
+                                  streetName = null;
+                                  housingKind = null;
+                                  blockController.clear();
+                                  parcelController.clear();
+                                  roomLayoutController.clear();
+                                  minSquareMetersController.clear();
+                                  maxSquareMetersController.clear();
+                                  maxBuildingAgeController.clear();
+                                  minBathroomController.clear();
+                                  minBalconyController.clear();
+                                });
+                              },
+                              icon: const Icon(Icons.filter_alt_off_outlined),
+                              label: const Text('Temizle'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              icon: const Icon(Icons.check),
+                              label: const Text('Uygula'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (applied == true && mounted) {
+      setState(() {
+        _dealType = dealType;
+        _type = type;
+        _placeKind = placeKind;
+        _placeName = placeName;
+        _streetName = streetName;
+        _housingKind = housingKind;
+        _blockController.text = blockController.text;
+        _parcelController.text = parcelController.text;
+        _roomLayoutController.text = roomLayoutController.text;
+        _minSquareMetersController.text = minSquareMetersController.text;
+        _maxSquareMetersController.text = maxSquareMetersController.text;
+        _maxBuildingAgeController.text = maxBuildingAgeController.text;
+        _minBathroomController.text = minBathroomController.text;
+        _minBalconyController.text = minBalconyController.text;
+      });
+    }
+
+    blockController.dispose();
+    parcelController.dispose();
+    roomLayoutController.dispose();
+    minSquareMetersController.dispose();
+    maxSquareMetersController.dispose();
+    maxBuildingAgeController.dispose();
+    minBathroomController.dispose();
+    minBalconyController.dispose();
+  }
+
+  int? _parseOptionalInt(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+    return int.tryParse(raw);
+  }
 }
 
-class _FilterPanel extends StatelessWidget {
-  const _FilterPanel({
-    required this.addressBook,
-    required this.type,
-    required this.placeKind,
-    required this.placeName,
-    required this.streetName,
-    required this.blockController,
-    required this.parcelController,
-    required this.roomLayoutController,
-    required this.minSquareMetersController,
-    required this.maxSquareMetersController,
-    required this.onTypeChanged,
-    required this.onPlaceKindChanged,
-    required this.onPlaceNameChanged,
-    required this.onStreetChanged,
-    required this.onTextFilterChanged,
-    required this.onClear,
+class _ListingToolbar extends StatelessWidget {
+  const _ListingToolbar({
+    required this.view,
+    required this.activeFilterCount,
+    required this.onViewChanged,
+    required this.onFilterPressed,
   });
 
-  final AddressBook? addressBook;
-  final PropertyType? type;
-  final PlaceKind? placeKind;
-  final String? placeName;
-  final String? streetName;
-  final TextEditingController blockController;
-  final TextEditingController parcelController;
-  final TextEditingController roomLayoutController;
-  final TextEditingController minSquareMetersController;
-  final TextEditingController maxSquareMetersController;
-  final ValueChanged<PropertyType?> onTypeChanged;
-  final ValueChanged<PlaceKind?> onPlaceKindChanged;
-  final ValueChanged<String?> onPlaceNameChanged;
-  final ValueChanged<String?> onStreetChanged;
-  final VoidCallback onTextFilterChanged;
-  final VoidCallback onClear;
+  final _ListingsView view;
+  final int activeFilterCount;
+  final ValueChanged<_ListingsView> onViewChanged;
+  final VoidCallback onFilterPressed;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final places = addressBook == null
-        ? const <String>[]
-        : placeKind == null
-            ? [
-                ...addressBook!.neighborhoods,
-                ...addressBook!.villages,
-              ]
-            : addressBook!.placesFor(placeKind!);
-
     return Material(
       elevation: 1,
-      color: theme.colorScheme.surface,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      color: Theme.of(context).colorScheme.surface,
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Row(
           children: [
-            _FilterDropdown<PropertyType?>(
-              width: 150,
-              value: type,
-              label: 'Tip',
-              items: [
-                const DropdownMenuItem<PropertyType?>(
-                  value: null,
-                  child: Text('Hepsi'),
-                ),
-                ...PropertyType.values.map<DropdownMenuItem<PropertyType?>>(
-                  (item) => DropdownMenuItem(
-                    value: item,
-                    child: Text(item.label),
-                  ),
-                ),
-              ],
-              onChanged: onTypeChanged,
-            ),
-            _FilterDropdown<PlaceKind?>(
-              width: 150,
-              value: placeKind,
-              label: 'Yer türü',
-              items: [
-                const DropdownMenuItem<PlaceKind?>(
-                  value: null,
-                  child: Text('Hepsi'),
-                ),
-                ...PlaceKind.values.map<DropdownMenuItem<PlaceKind?>>(
-                  (item) => DropdownMenuItem(
-                    value: item,
-                    child: Text(item.label),
-                  ),
-                ),
-              ],
-              onChanged: onPlaceKindChanged,
-            ),
-            SearchSelectionField(
-              width: 230,
-              value: places.contains(placeName) ? placeName : null,
-              label: 'Mahalle/Köy',
-              options: places,
-              emptyText: 'Hepsi',
-              dense: true,
-              clearText: 'Hepsi',
-              onChanged: onPlaceNameChanged,
-            ),
-            const SizedBox(width: 10),
-            SearchSelectionField(
-              width: 220,
-              value: (addressBook?.streets ?? const []).contains(streetName)
-                  ? streetName
-                  : null,
-              label: 'Cadde/Sokak',
-              options: addressBook?.streets ?? const <String>[],
-              emptyText: 'Hepsi',
-              dense: true,
-              clearText: 'Hepsi',
-              onChanged: onStreetChanged,
-            ),
-            SizedBox(
-              width: 118,
-              child: TextField(
-                controller: roomLayoutController,
-                onChanged: (_) => onTextFilterChanged(),
-                decoration: const InputDecoration(
-                  labelText: 'Oda',
-                  hintText: '2+1',
-                  isDense: true,
-                ),
+            Expanded(
+              child: SegmentedButton<_ListingsView>(
+                segments: _ListingsView.values
+                    .map(
+                      (view) => ButtonSegment<_ListingsView>(
+                        value: view,
+                        icon: Icon(
+                          view == _ListingsView.list
+                              ? Icons.view_list_outlined
+                              : Icons.map_outlined,
+                        ),
+                        label: Text(view.label),
+                      ),
+                    )
+                    .toList(),
+                selected: {view},
+                onSelectionChanged: (value) => onViewChanged(value.first),
               ),
             ),
             const SizedBox(width: 10),
-            SizedBox(
-              width: 120,
-              child: TextField(
-                controller: minSquareMetersController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) => onTextFilterChanged(),
-                decoration: const InputDecoration(
-                  labelText: 'Min m²',
-                  isDense: true,
-                ),
+            Badge.count(
+              count: activeFilterCount,
+              isLabelVisible: activeFilterCount > 0,
+              child: IconButton.filledTonal(
+                tooltip: 'Filtrele',
+                onPressed: onFilterPressed,
+                icon: const Icon(Icons.tune_outlined),
               ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 120,
-              child: TextField(
-                controller: maxSquareMetersController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                onChanged: (_) => onTextFilterChanged(),
-                decoration: const InputDecoration(
-                  labelText: 'Max m²',
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 110,
-              child: TextField(
-                controller: blockController,
-                onChanged: (_) => onTextFilterChanged(),
-                decoration: const InputDecoration(
-                  labelText: 'Ada',
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 110,
-              child: TextField(
-                controller: parcelController,
-                onChanged: (_) => onTextFilterChanged(),
-                decoration: const InputDecoration(
-                  labelText: 'Parsel',
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: 'Filtreleri temizle',
-              onPressed: onClear,
-              icon: const Icon(Icons.filter_alt_off_outlined),
             ),
           ],
         ),
@@ -414,39 +701,204 @@ class _FilterPanel extends StatelessWidget {
   }
 }
 
-class _FilterDropdown<T> extends StatelessWidget {
-  const _FilterDropdown({
-    required this.width,
-    required this.value,
+class _FilterSegment<T> extends StatelessWidget {
+  const _FilterSegment({
     required this.label,
-    required this.items,
+    required this.values,
+    required this.selected,
+    required this.labelFor,
     required this.onChanged,
   });
 
-  final double width;
-  final T value;
   final String label;
-  final List<DropdownMenuItem<T>> items;
+  final List<T> values;
+  final T? selected;
+  final String Function(T value) labelFor;
   final ValueChanged<T?> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: SizedBox(
-        width: width,
-        child: DropdownButtonFormField<T>(
-          key: ValueKey('filter-$label-$value-${items.length}'),
-          initialValue: value,
-          items: items,
-          onChanged: onChanged,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: label,
-            isDense: true,
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+        SegmentedButton<T>(
+          emptySelectionAllowed: true,
+          segments: values
+              .map(
+                (value) => ButtonSegment<T>(
+                  value: value,
+                  label: Text(labelFor(value)),
+                ),
+              )
+              .toList(),
+          selected: selected == null ? <T>{} : {selected as T},
+          onSelectionChanged: (value) {
+            onChanged(value.isEmpty ? null : value.first);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ListingMapView extends StatefulWidget {
+  const _ListingMapView({
+    required this.listings,
+    required this.database,
+  });
+
+  final List<PropertyListing> listings;
+  final AppDatabase database;
+
+  @override
+  State<_ListingMapView> createState() => _ListingMapViewState();
+}
+
+class _ListingMapViewState extends State<_ListingMapView> {
+  bool _tileError = false;
+  int _mapNonce = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final locatedListings =
+        widget.listings.where((listing) => listing.hasLocation).toList();
+    if (locatedListings.isEmpty) {
+      return const EmptyState(
+        icon: Icons.location_off_outlined,
+        title: 'Konumlu ilan yok',
+        message:
+            'Haritada görmek için ilanlara ekleme veya düzenleme ekranından konum seçin.',
+      );
+    }
+
+    final center = LatLng(
+      locatedListings.first.latitude!,
+      locatedListings.first.longitude!,
+    );
+    return Stack(
+      children: [
+        FlutterMap(
+          key: ValueKey(_mapNonce),
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: locatedListings.length == 1 ? 16 : 13,
+            minZoom: 6,
+            maxZoom: 19,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.sorgunemlak.defter',
+              errorTileCallback: (_, __, ___) {
+                if (!_tileError && mounted) {
+                  setState(() => _tileError = true);
+                }
+              },
+            ),
+            MarkerLayer(
+              markers: locatedListings.map((listing) {
+                return Marker(
+                  point: LatLng(listing.latitude!, listing.longitude!),
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.topCenter,
+                  child: GestureDetector(
+                    onTap: () => _showListingPreview(listing),
+                    child: Icon(
+                      Icons.location_pin,
+                      size: 46,
+                      color: _colorForType(listing.type),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            SimpleAttributionWidget(
+              source: const Text('OpenStreetMap contributors'),
+              backgroundColor:
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.88),
+            ),
+          ],
+        ),
+        if (_tileError)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Card(
+                margin: const EdgeInsets.all(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wifi_off_outlined),
+                      const SizedBox(width: 8),
+                      const Flexible(
+                        child:
+                            Text('Harita yüklenemedi. İnterneti kontrol edin.'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _tileError = false;
+                            _mapNonce++;
+                          });
+                        },
+                        child: const Text('Tekrar dene'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showListingPreview(PropertyListing listing) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ListingCard(
+            listing: listing,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => PropertyDetailScreen(
+                    database: widget.database,
+                    listing: listing,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
+  }
+
+  Color _colorForType(PropertyType type) {
+    switch (type) {
+      case PropertyType.apartment:
+        return const Color(0xFF156C5B);
+      case PropertyType.land:
+        return const Color(0xFF8A5A18);
+      case PropertyType.field:
+        return const Color(0xFF407A36);
+    }
   }
 }

@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -32,6 +34,35 @@ jobs:
 
       - name: Test
         run: flutter test
+
+      - name: Validate release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -eu
+          PUBSPEC_VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          VERSION_NAME="${PUBSPEC_VERSION%%+*}"
+          VERSION_CODE="${PUBSPEC_VERSION##*+}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          if [ "$VERSION_NAME" != "$TAG_VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} must match pubspec version name ${VERSION_NAME}."
+            exit 1
+          fi
+
+          if ! printf "%s" "$VERSION_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::pubspec version code must be a positive integer."
+            exit 1
+          fi
+
+          PREVIOUS_TAG="$(git tag --sort=-v:refname --list 'v*' | grep -vx "${GITHUB_REF_NAME}" | head -n 1 || true)"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            PREVIOUS_VERSION="$(git show "${PREVIOUS_TAG}:pubspec.yaml" | grep '^version:' | awk '{print $2}')"
+            PREVIOUS_CODE="${PREVIOUS_VERSION##*+}"
+            if printf "%s" "$PREVIOUS_CODE" | grep -Eq '^[0-9]+$' && [ "$VERSION_CODE" -le "$PREVIOUS_CODE" ]; then
+              echo "::error::pubspec version code ${VERSION_CODE} must be greater than previous release ${PREVIOUS_TAG} code ${PREVIOUS_CODE}."
+              exit 1
+            fi
+          fi
 
       - name: Prepare release signing
         if: startsWith(github.ref, 'refs/tags/v')

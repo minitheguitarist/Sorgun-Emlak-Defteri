@@ -16,12 +16,13 @@ class AppDatabase {
     final dbPath = p.join(basePath, 'sorgun_emlak_defteri.db');
     _database = await openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
 CREATE TABLE listings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,
+  deal_type TEXT,
   place_kind TEXT NOT NULL,
   place_name TEXT NOT NULL,
   street_name TEXT NOT NULL,
@@ -30,8 +31,14 @@ CREATE TABLE listings (
   parcel_no TEXT,
   room_layout TEXT,
   square_meters REAL,
+  building_age INTEGER,
+  bathroom_count INTEGER,
+  balcony_count INTEGER,
+  housing_kind TEXT,
   latitude REAL,
   longitude REAL,
+  owner_name TEXT,
+  owner_phone TEXT,
   cost_price REAL NOT NULL,
   sale_price REAL NOT NULL,
   description TEXT NOT NULL,
@@ -70,6 +77,21 @@ CREATE TABLE price_history (
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE listings ADD COLUMN latitude REAL');
           await db.execute('ALTER TABLE listings ADD COLUMN longitude REAL');
+        }
+        if (oldVersion < 4) {
+          await db.execute('ALTER TABLE listings ADD COLUMN deal_type TEXT');
+          await db.execute(
+            'ALTER TABLE listings ADD COLUMN building_age INTEGER',
+          );
+          await db.execute(
+            'ALTER TABLE listings ADD COLUMN bathroom_count INTEGER',
+          );
+          await db.execute(
+            'ALTER TABLE listings ADD COLUMN balcony_count INTEGER',
+          );
+          await db.execute('ALTER TABLE listings ADD COLUMN housing_kind TEXT');
+          await db.execute('ALTER TABLE listings ADD COLUMN owner_name TEXT');
+          await db.execute('ALTER TABLE listings ADD COLUMN owner_phone TEXT');
         }
       },
     );

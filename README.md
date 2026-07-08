@@ -67,6 +67,14 @@ Bu keystore'u kaybetmeyin. Sonraki surumlerin mevcut uygulamanin ustune kurulabi
 
 Telefonda daha once `flutter run` veya debug APK ile kurulmus uygulama varsa, ilk imzali release APK onun ustune kurulamaz; debug ve release imzalari farklidir. Ilk release kurulumundan once eski debug uygulamasini kaldirin. Bu islem cihazdaki uygulama verisini siler.
 
+GitHub Releases uzerinden indirilen yeni APK'nin eski surumun ustune kurulabilmesi icin uc kosul ayni anda saglanmalidir:
+
+- Paket adi ayni kalmali: `com.sorgunemlak.defter`
+- APK ayni release keystore ile imzalanmali
+- `pubspec.yaml` icindeki build number artmali, ornek `1.0.3+4`
+
+Tag release workflow'u bu build number'in onceki release'ten buyuk oldugunu kontrol eder.
+
 ## GitHub Release APK
 
 Kullanıcıların APK'yi GitHub Releases sayfasindan indirmesi icin version tag'i gonderin:

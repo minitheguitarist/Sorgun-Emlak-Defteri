@@ -30,6 +30,7 @@ class SearchSelectionField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final field = FormField<String?>(
       key: ValueKey('$label-$value-${options.length}-$requiredMessage'),
       initialValue: value,
@@ -60,16 +61,35 @@ class SearchSelectionField extends StatelessWidget {
           child: InputDecorator(
             isEmpty: state.value == null,
             decoration: InputDecoration(
-              labelText: label,
               isDense: dense,
               prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
               suffixIcon: const Icon(Icons.search),
               errorText: state.errorText,
             ),
-            child: Text(
-              state.value ?? emptyText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  state.value ?? emptyText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: state.value == null
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                  ),
+                ),
+              ],
             ),
           ),
         );

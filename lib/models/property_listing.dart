@@ -6,6 +6,7 @@ class PropertyListing {
   const PropertyListing({
     this.id,
     required this.type,
+    this.dealType,
     required this.placeKind,
     required this.placeName,
     required this.streetName,
@@ -14,8 +15,14 @@ class PropertyListing {
     this.parcelNo,
     this.roomLayout,
     this.squareMeters,
+    this.buildingAge,
+    this.bathroomCount,
+    this.balconyCount,
+    this.housingKind,
     this.latitude,
     this.longitude,
+    this.ownerName,
+    this.ownerPhone,
     required this.costPrice,
     required this.salePrice,
     required this.description,
@@ -29,6 +36,7 @@ class PropertyListing {
 
   final int? id;
   final PropertyType type;
+  final DealType? dealType;
   final PlaceKind placeKind;
   final String placeName;
   final String streetName;
@@ -37,8 +45,14 @@ class PropertyListing {
   final String? parcelNo;
   final String? roomLayout;
   final double? squareMeters;
+  final int? buildingAge;
+  final int? bathroomCount;
+  final int? balconyCount;
+  final HousingKind? housingKind;
   final double? latitude;
   final double? longitude;
+  final String? ownerName;
+  final String? ownerPhone;
   final double costPrice;
   final double salePrice;
   final String description;
@@ -117,6 +131,7 @@ class PropertyListing {
   PropertyListing copyWith({
     int? id,
     PropertyType? type,
+    DealType? dealType,
     PlaceKind? placeKind,
     String? placeName,
     String? streetName,
@@ -125,8 +140,14 @@ class PropertyListing {
     String? parcelNo,
     String? roomLayout,
     double? squareMeters,
+    int? buildingAge,
+    int? bathroomCount,
+    int? balconyCount,
+    HousingKind? housingKind,
     double? latitude,
     double? longitude,
+    String? ownerName,
+    String? ownerPhone,
     double? costPrice,
     double? salePrice,
     String? description,
@@ -140,6 +161,7 @@ class PropertyListing {
     return PropertyListing(
       id: id ?? this.id,
       type: type ?? this.type,
+      dealType: dealType ?? this.dealType,
       placeKind: placeKind ?? this.placeKind,
       placeName: placeName ?? this.placeName,
       streetName: streetName ?? this.streetName,
@@ -148,8 +170,14 @@ class PropertyListing {
       parcelNo: parcelNo ?? this.parcelNo,
       roomLayout: roomLayout ?? this.roomLayout,
       squareMeters: squareMeters ?? this.squareMeters,
+      buildingAge: buildingAge ?? this.buildingAge,
+      bathroomCount: bathroomCount ?? this.bathroomCount,
+      balconyCount: balconyCount ?? this.balconyCount,
+      housingKind: housingKind ?? this.housingKind,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      ownerName: ownerName ?? this.ownerName,
+      ownerPhone: ownerPhone ?? this.ownerPhone,
       costPrice: costPrice ?? this.costPrice,
       salePrice: salePrice ?? this.salePrice,
       description: description ?? this.description,
@@ -166,6 +194,7 @@ class PropertyListing {
     return {
       'id': id,
       'type': type.name,
+      'deal_type': dealType?.name,
       'place_kind': placeKind.name,
       'place_name': placeName,
       'street_name': streetName,
@@ -174,8 +203,14 @@ class PropertyListing {
       'parcel_no': parcelNo,
       'room_layout': roomLayout,
       'square_meters': squareMeters,
+      'building_age': buildingAge,
+      'bathroom_count': bathroomCount,
+      'balcony_count': balconyCount,
+      'housing_kind': housingKind?.name,
       'latitude': latitude,
       'longitude': longitude,
+      'owner_name': ownerName,
+      'owner_phone': ownerPhone,
       'cost_price': costPrice,
       'sale_price': salePrice,
       'description': description,
@@ -193,6 +228,7 @@ class PropertyListing {
     return PropertyListing(
       id: map['id'] as int?,
       type: PropertyType.fromStorage(map['type'] as String),
+      dealType: DealType.fromStorage(map['deal_type'] as String?),
       placeKind: PlaceKind.fromStorage(map['place_kind'] as String),
       placeName: map['place_name'] as String,
       streetName: map['street_name'] as String? ?? '',
@@ -201,8 +237,14 @@ class PropertyListing {
       parcelNo: map['parcel_no'] as String?,
       roomLayout: map['room_layout'] as String?,
       squareMeters: (map['square_meters'] as num?)?.toDouble(),
+      buildingAge: (map['building_age'] as num?)?.toInt(),
+      bathroomCount: (map['bathroom_count'] as num?)?.toInt(),
+      balconyCount: (map['balcony_count'] as num?)?.toInt(),
+      housingKind: HousingKind.fromStorage(map['housing_kind'] as String?),
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
+      ownerName: map['owner_name'] as String?,
+      ownerPhone: map['owner_phone'] as String?,
       costPrice: (map['cost_price'] as num).toDouble(),
       salePrice: (map['sale_price'] as num).toDouble(),
       description: map['description'] as String? ?? '',

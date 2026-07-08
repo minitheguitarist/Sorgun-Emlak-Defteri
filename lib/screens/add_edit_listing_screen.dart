@@ -10,6 +10,7 @@ import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
 import '../services/photo_service.dart';
+import '../services/reverse_geocoding_service.dart';
 import '../widgets/search_selection_field.dart';
 import 'location_picker_screen.dart';
 
@@ -37,8 +38,10 @@ class AddEditListingScreen extends StatefulWidget {
 
 class _AddEditListingScreenState extends State<AddEditListingScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _reverseGeocodingService = const ReverseGeocodingService();
   late Future<AddressBook> _addressFuture;
-  late PropertyType _type;
+  late PropertyType? _type;
+  late DealType? _dealType;
   late PlaceKind _placeKind;
   String? _placeName;
   String? _streetName;
@@ -47,6 +50,12 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _parcelController;
   late final TextEditingController _roomLayoutController;
   late final TextEditingController _squareMetersController;
+  late final TextEditingController _buildingAgeController;
+  late final TextEditingController _bathroomCountController;
+  late final TextEditingController _balconyCountController;
+  late HousingKind? _housingKind;
+  late final TextEditingController _ownerNameController;
+  late final TextEditingController _ownerPhoneController;
   late final TextEditingController _costController;
   late final TextEditingController _saleController;
   late final TextEditingController _descriptionController;
@@ -62,7 +71,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     super.initState();
     final listing = widget.listing;
     _addressFuture = widget.addressRepository.load();
-    _type = listing?.type ?? PropertyType.apartment;
+    _type = listing?.type;
+    _dealType = listing?.dealType;
     _placeKind = listing?.placeKind ?? PlaceKind.neighborhood;
     _placeName = listing?.placeName;
     _streetName = listing?.streetName;
@@ -77,6 +87,18 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
               listing.squareMeters! % 1 == 0 ? 0 : 1,
             ),
     );
+    _buildingAgeController = TextEditingController(
+      text: listing?.buildingAge?.toString() ?? '',
+    );
+    _bathroomCountController = TextEditingController(
+      text: listing?.bathroomCount?.toString() ?? '',
+    );
+    _balconyCountController = TextEditingController(
+      text: listing?.balconyCount?.toString() ?? '',
+    );
+    _housingKind = listing?.housingKind;
+    _ownerNameController = TextEditingController(text: listing?.ownerName);
+    _ownerPhoneController = TextEditingController(text: listing?.ownerPhone);
     _costController = TextEditingController(
       text: listing == null ? '' : listing.costPrice.toStringAsFixed(0),
     );
@@ -100,6 +122,11 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _parcelController.dispose();
     _roomLayoutController.dispose();
     _squareMetersController.dispose();
+    _buildingAgeController.dispose();
+    _bathroomCountController.dispose();
+    _balconyCountController.dispose();
+    _ownerNameController.dispose();
+    _ownerPhoneController.dispose();
     _costController.dispose();
     _saleController.dispose();
     _descriptionController.dispose();
@@ -143,8 +170,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     final cost = parseMoneyInput(_costController.text);
     final sale = parseMoneyInput(_saleController.text);
     final profit = sale - cost;
-    final profitPercent = cost <= 0 ? 0 : profit / cost * 100;
+    final profitPercent = sale <= 0 ? 0 : profit / sale * 100;
     final places = addressBook.placesFor(_placeKind);
+    final priceLabel = _dealType?.priceLabel ?? 'Fiyat';
 
     return Form(
       key: _formKey,
@@ -176,7 +204,29 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          SegmentedButton<DealType>(
+            emptySelectionAllowed: true,
+            segments: DealType.values
+                .map(
+                  (type) => ButtonSegment<DealType>(
+                    value: type,
+                    icon: Icon(
+                      type == DealType.sale
+                          ? Icons.sell_outlined
+                          : Icons.vpn_key_outlined,
+                    ),
+                    label: Text(type.label),
+                  ),
+                )
+                .toList(),
+            selected: _dealType == null ? <DealType>{} : {_dealType!},
+            onSelectionChanged: (value) {
+              setState(() => _dealType = value.isEmpty ? null : value.first);
+            },
+          ),
+          const SizedBox(height: 16),
           SegmentedButton<PropertyType>(
+            emptySelectionAllowed: true,
             segments: PropertyType.values
                 .map(
                   (type) => ButtonSegment<PropertyType>(
@@ -186,9 +236,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                   ),
                 )
                 .toList(),
-            selected: {_type},
+            selected: _type == null ? <PropertyType>{} : {_type!},
             onSelectionChanged: (value) {
-              setState(() => _type = value.first);
+              setState(() => _type = value.isEmpty ? null : value.first);
             },
           ),
           const SizedBox(height: 16),
@@ -247,6 +297,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             latitude: _latitude,
             longitude: _longitude,
             onSelect: _selectLocation,
+            onSuggestAddress: _latitude == null || _longitude == null
+                ? null
+                : () => _suggestAddress(addressBook),
             onClear: _latitude == null || _longitude == null
                 ? null
                 : () => setState(() {
@@ -257,99 +310,201 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
           const SizedBox(height: 12),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 230),
-            child: _type == PropertyType.apartment
-                ? Column(
-                    key: const ValueKey('building'),
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        controller: _buildingController,
-                        decoration: const InputDecoration(
-                          labelText: 'Site veya bina adı',
-                          prefixIcon: Icon(Icons.apartment_outlined),
-                        ),
-                        validator: (value) {
-                          if (_type != PropertyType.apartment) {
-                            return null;
-                          }
-                          return (value ?? '').trim().isEmpty
-                              ? 'Site veya bina adını girin.'
-                              : null;
-                        },
+            child: _type == null
+                ? Container(
+                    key: const ValueKey('type-empty'),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
+                    ),
+                    child: const Text(
+                      'Daire, arsa veya tarla seçince ilgili alanlar burada görünecek.',
+                    ),
+                  )
+                : _type == PropertyType.apartment
+                    ? Column(
+                        key: const ValueKey('building'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _buildingController,
+                            decoration: const InputDecoration(
+                              labelText: 'Site veya bina adı',
+                              prefixIcon: Icon(Icons.apartment_outlined),
+                            ),
+                            validator: (value) {
+                              if (_type != PropertyType.apartment) {
+                                return null;
+                              }
+                              return (value ?? '').trim().isEmpty
+                                  ? 'Site veya bina adını girin.'
+                                  : null;
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _roomLayoutController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Oda tipi',
+                                    hintText: '2+1',
+                                    prefixIcon:
+                                        Icon(Icons.meeting_room_outlined),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _squareMetersController,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Metrekare',
+                                    suffixText: 'm²',
+                                    prefixIcon:
+                                        Icon(Icons.square_foot_outlined),
+                                  ),
+                                  validator: _optionalAreaValidator,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _buildingAgeController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Bina yaşı',
+                                    prefixIcon: Icon(Icons.history_outlined),
+                                  ),
+                                  validator: _optionalIntValidator,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _bathroomCountController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Banyo sayısı',
+                                    prefixIcon: Icon(Icons.bathtub_outlined),
+                                  ),
+                                  validator: _optionalIntValidator,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _balconyCountController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Balkon sayısı',
+                                    prefixIcon: Icon(Icons.balcony_outlined),
+                                  ),
+                                  validator: _optionalIntValidator,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<HousingKind>(
+                                  initialValue: _housingKind,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Konut tipi',
+                                    prefixIcon: Icon(Icons.home_work_outlined),
+                                  ),
+                                  items: HousingKind.values
+                                      .map(
+                                        (kind) => DropdownMenuItem<HousingKind>(
+                                          value: kind,
+                                          child: Text(kind.label),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() => _housingKind = value);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    : Row(
+                        key: const ValueKey('parcel'),
                         children: [
                           Expanded(
                             child: TextFormField(
-                              controller: _roomLayoutController,
+                              controller: _blockController,
                               decoration: const InputDecoration(
-                                labelText: 'Oda tipi',
-                                hintText: '2+1',
-                                prefixIcon: Icon(Icons.meeting_room_outlined),
+                                labelText: 'Ada',
+                                prefixIcon: Icon(Icons.grid_view_outlined),
                               ),
+                              validator: (value) {
+                                if (_type == null ||
+                                    _type == PropertyType.apartment) {
+                                  return null;
+                                }
+                                return (value ?? '').trim().isEmpty
+                                    ? 'Ada girin.'
+                                    : null;
+                              },
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
-                              controller: _squareMetersController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              controller: _parcelController,
                               decoration: const InputDecoration(
-                                labelText: 'Metrekare',
-                                suffixText: 'm²',
-                                prefixIcon: Icon(Icons.square_foot_outlined),
+                                labelText: 'Parsel',
+                                prefixIcon: Icon(Icons.crop_square_outlined),
                               ),
-                              validator: _optionalAreaValidator,
+                              validator: (value) {
+                                if (_type == null ||
+                                    _type == PropertyType.apartment) {
+                                  return null;
+                                }
+                                return (value ?? '').trim().isEmpty
+                                    ? 'Parsel girin.'
+                                    : null;
+                              },
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  )
-                : Row(
-                    key: const ValueKey('parcel'),
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _blockController,
-                          decoration: const InputDecoration(
-                            labelText: 'Ada',
-                            prefixIcon: Icon(Icons.grid_view_outlined),
-                          ),
-                          validator: (value) {
-                            if (_type == PropertyType.apartment) {
-                              return null;
-                            }
-                            return (value ?? '').trim().isEmpty
-                                ? 'Ada girin.'
-                                : null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _parcelController,
-                          decoration: const InputDecoration(
-                            labelText: 'Parsel',
-                            prefixIcon: Icon(Icons.crop_square_outlined),
-                          ),
-                          validator: (value) {
-                            if (_type == PropertyType.apartment) {
-                              return null;
-                            }
-                            return (value ?? '').trim().isEmpty
-                                ? 'Parsel girin.'
-                                : null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _ownerNameController,
+            decoration: const InputDecoration(
+              labelText: 'Mülk sahibi adı soyadı (isteğe bağlı)',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _ownerPhoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Mülk sahibi telefonu (isteğe bağlı)',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -372,9 +527,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                   controller: _saleController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Satış fiyatı',
-                    prefixIcon: Icon(Icons.sell_outlined),
+                  decoration: InputDecoration(
+                    labelText: priceLabel,
+                    prefixIcon: const Icon(Icons.sell_outlined),
                   ),
                   validator: _positiveMoneyValidator,
                 ),
@@ -446,6 +601,23 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     return parseOptionalNumberInput(raw) == null ? 'Geçerli m² girin.' : null;
   }
 
+  String? _optionalIntValidator(String? value) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+    final parsed = int.tryParse(raw);
+    return parsed == null || parsed < 0 ? 'Geçerli sayı girin.' : null;
+  }
+
+  int? _parseOptionalInt(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+    return int.tryParse(raw);
+  }
+
   Future<void> _pickGallery() async {
     try {
       final paths = await widget.photoService.pickFromGallery();
@@ -471,6 +643,14 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   }
 
   Future<void> _save() async {
+    if (_dealType == null) {
+      _showSnack('Satılık veya kiralık seçin.');
+      return;
+    }
+    if (_type == null) {
+      _showSnack('Daire, arsa veya tarla seçin.');
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -480,7 +660,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
       final previous = widget.listing;
       final listing = PropertyListing(
         id: previous?.id,
-        type: _type,
+        type: _type!,
+        dealType: _dealType,
         placeKind: _placeKind,
         placeName: _placeName!,
         streetName: _streetName ?? '',
@@ -499,8 +680,24 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         squareMeters: _type == PropertyType.apartment
             ? parseOptionalNumberInput(_squareMetersController.text)
             : null,
+        buildingAge: _type == PropertyType.apartment
+            ? _parseOptionalInt(_buildingAgeController.text)
+            : null,
+        bathroomCount: _type == PropertyType.apartment
+            ? _parseOptionalInt(_bathroomCountController.text)
+            : null,
+        balconyCount: _type == PropertyType.apartment
+            ? _parseOptionalInt(_balconyCountController.text)
+            : null,
+        housingKind: _type == PropertyType.apartment ? _housingKind : null,
         latitude: _latitude,
         longitude: _longitude,
+        ownerName: _ownerNameController.text.trim().isEmpty
+            ? null
+            : _ownerNameController.text.trim(),
+        ownerPhone: _ownerPhoneController.text.trim().isEmpty
+            ? null
+            : _ownerPhoneController.text.trim(),
         costPrice: parseMoneyInput(_costController.text),
         salePrice: parseMoneyInput(_saleController.text),
         description: _descriptionController.text.trim(),
@@ -584,6 +781,46 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     });
   }
 
+  Future<void> _suggestAddress(AddressBook addressBook) async {
+    final latitude = _latitude;
+    final longitude = _longitude;
+    if (latitude == null || longitude == null) {
+      return;
+    }
+
+    _showSnack('Konumdan adres aranıyor.');
+    try {
+      final suggestion = await _reverseGeocodingService.suggestAddress(
+        latitude: latitude,
+        longitude: longitude,
+        addressBook: addressBook,
+      );
+      if (!mounted) {
+        return;
+      }
+      final result = await showDialog<_AddressSelectionResult>(
+        context: context,
+        builder: (context) => _AddressSuggestionDialog(
+          addressBook: addressBook,
+          suggestion: suggestion,
+          currentPlaceKind: _placeKind,
+          currentPlaceName: _placeName,
+          currentStreetName: _streetName,
+        ),
+      );
+      if (!mounted || result == null) {
+        return;
+      }
+      setState(() {
+        _placeKind = result.placeKind;
+        _placeName = result.placeName;
+        _streetName = result.streetName;
+      });
+    } catch (error) {
+      _showSnack('Adres önerilemedi: $error');
+    }
+  }
+
   void _showSnack(String message) {
     if (!mounted) {
       return;
@@ -599,12 +836,14 @@ class _LocationEditor extends StatelessWidget {
     required this.latitude,
     required this.longitude,
     required this.onSelect,
+    required this.onSuggestAddress,
     required this.onClear,
   });
 
   final double? latitude;
   final double? longitude;
   final VoidCallback onSelect;
+  final VoidCallback? onSuggestAddress;
   final VoidCallback? onClear;
 
   @override
@@ -661,8 +900,154 @@ class _LocationEditor extends StatelessWidget {
               ),
             ],
           ),
+          if (hasLocation) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onSuggestAddress,
+                icon: const Icon(Icons.manage_search_outlined),
+                label: const Text('Konumdan adres öner'),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _AddressSelectionResult {
+  const _AddressSelectionResult({
+    required this.placeKind,
+    required this.placeName,
+    required this.streetName,
+  });
+
+  final PlaceKind placeKind;
+  final String placeName;
+  final String? streetName;
+}
+
+class _AddressSuggestionDialog extends StatefulWidget {
+  const _AddressSuggestionDialog({
+    required this.addressBook,
+    required this.suggestion,
+    required this.currentPlaceKind,
+    required this.currentPlaceName,
+    required this.currentStreetName,
+  });
+
+  final AddressBook addressBook;
+  final AddressSuggestion suggestion;
+  final PlaceKind currentPlaceKind;
+  final String? currentPlaceName;
+  final String? currentStreetName;
+
+  @override
+  State<_AddressSuggestionDialog> createState() =>
+      _AddressSuggestionDialogState();
+}
+
+class _AddressSuggestionDialogState extends State<_AddressSuggestionDialog> {
+  late PlaceKind _placeKind;
+  late String? _placeName;
+  late String? _streetName;
+
+  @override
+  void initState() {
+    super.initState();
+    _placeKind = widget.suggestion.placeKind;
+    _placeName = widget.suggestion.placeName ?? widget.currentPlaceName;
+    _streetName = widget.suggestion.streetName ?? widget.currentStreetName;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final places = widget.addressBook.placesFor(_placeKind);
+    return AlertDialog(
+      title: const Text('Adres önerisi'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Konumdan bulunan adresi kontrol edin. Yanlışsa listeden düzeltebilirsiniz.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (widget.suggestion.rawAddress.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                widget.suggestion.rawAddress,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            SegmentedButton<PlaceKind>(
+              segments: PlaceKind.values
+                  .map(
+                    (kind) => ButtonSegment<PlaceKind>(
+                      value: kind,
+                      label: Text(kind.label),
+                    ),
+                  )
+                  .toList(),
+              selected: {_placeKind},
+              onSelectionChanged: (value) {
+                setState(() {
+                  _placeKind = value.first;
+                  _placeName = null;
+                  _streetName = null;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            SearchSelectionField(
+              label: 'Mahalle/Köy',
+              value: places.contains(_placeName) ? _placeName : null,
+              options: places,
+              allowClear: false,
+              onChanged: (value) => setState(() => _placeName = value),
+            ),
+            const SizedBox(height: 12),
+            SearchSelectionField(
+              label: _placeKind == PlaceKind.village
+                  ? 'Cadde/Sokak/Yol (isteğe bağlı)'
+                  : 'Cadde/Sokak/Yol',
+              value: widget.addressBook.streets.contains(_streetName)
+                  ? _streetName
+                  : null,
+              options: widget.addressBook.streets,
+              allowClear: _placeKind == PlaceKind.village,
+              clearText: 'Seçilmedi',
+              onChanged: (value) => setState(() => _streetName = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Vazgeç'),
+        ),
+        FilledButton(
+          onPressed: _placeName == null ||
+                  (_placeKind == PlaceKind.neighborhood && _streetName == null)
+              ? null
+              : () => Navigator.of(context).pop(
+                    _AddressSelectionResult(
+                      placeKind: _placeKind,
+                      placeName: _placeName!,
+                      streetName: _streetName,
+                    ),
+                  ),
+          child: const Text('Kullan'),
+        ),
+      ],
     );
   }
 }
