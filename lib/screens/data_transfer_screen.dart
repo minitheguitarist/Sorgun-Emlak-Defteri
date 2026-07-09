@@ -83,7 +83,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Paket ilanları, satılanları, fiyat geçmişini ve fotoğrafları birlikte taşır. Yanlış dosya içe aktarılırsa işlem öncesi otomatik yedek paketi oluşturulur.',
+                  'Paket ilanları, müşterileri, ilgi bağlantılarını, satılanları, fiyat geçmişini ve fotoğrafları birlikte taşır. Yanlış dosya içe aktarılırsa işlem öncesi otomatik yedek paketi oluşturulur.',
                   style: theme.textTheme.bodyMedium,
                 ),
               ),
@@ -130,7 +130,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Verinin üstüne yazılsın mı?'),
         content: const Text(
-          'Bu işlem telefondaki mevcut ilanları, fiyat geçmişini ve fotoğrafları seçilen paketteki veriyle değiştirir.',
+          'Bu işlem telefondaki mevcut ilanları, müşterileri, fiyat geçmişini ve fotoğrafları seçilen paketteki veriyle değiştirir.',
         ),
         actions: [
           TextButton(
@@ -153,7 +153,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       final summary = await _service.importPackage(path);
       widget.onImported();
       _showSnack(
-        '${summary.listingCount} ilan ve ${summary.photoCount} fotoğraf içe aktarıldı. Yedek: ${summary.backupPath}',
+        '${summary.listingCount} ilan, ${summary.customerCount} müşteri ve ${summary.photoCount} fotoğraf içe aktarıldı. Yedek: ${summary.backupPath}',
       );
     } catch (error) {
       _showSnack('Paket içe aktarılamadı: $error');

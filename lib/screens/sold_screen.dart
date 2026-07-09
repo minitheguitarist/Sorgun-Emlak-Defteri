@@ -21,12 +21,12 @@ class SoldScreen extends StatefulWidget {
 }
 
 class _SoldScreenState extends State<SoldScreen> {
-  late Future<List<PropertyListing>> _future;
+  late Future<_SoldListingsData> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.database.getSoldListings();
+    _future = _loadData();
   }
 
   @override
@@ -38,19 +38,29 @@ class _SoldScreenState extends State<SoldScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = widget.database.getSoldListings());
+    setState(() => _future = _loadData());
     await _future;
+  }
+
+  Future<_SoldListingsData> _loadData() async {
+    final listings = await widget.database.getSoldListings();
+    final interestCounts = await widget.database.getListingInterestCounts();
+    return _SoldListingsData(
+      listings: listings,
+      interestCounts: interestCounts,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<PropertyListing>>(
+    return FutureBuilder<_SoldListingsData>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        final listings = snapshot.data ?? const [];
+        final data = snapshot.data ?? const _SoldListingsData();
+        final listings = data.listings;
         if (listings.isEmpty) {
           return const EmptyState(
             icon: Icons.inventory_2_outlined,
@@ -69,6 +79,7 @@ class _SoldScreenState extends State<SoldScreen> {
               return ListingCard(
                 listing: listing,
                 showSoldPrice: true,
+                interestCount: data.interestCounts[listing.id] ?? 0,
                 trailing: const Icon(Icons.check_circle_outline, size: 20),
                 onTap: () {
                   Navigator.of(context).push(
@@ -88,4 +99,14 @@ class _SoldScreenState extends State<SoldScreen> {
       },
     );
   }
+}
+
+class _SoldListingsData {
+  const _SoldListingsData({
+    this.listings = const [],
+    this.interestCounts = const {},
+  });
+
+  final List<PropertyListing> listings;
+  final Map<int, int> interestCounts;
 }

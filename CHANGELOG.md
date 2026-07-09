@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.7
+
+- Sol menuye musteriler bolumu eklendi; rehberden kisi secerek musteri kaydi olusturma desteklendi.
+- Musteri detayinda min/max butce, kayitli istek filtresi, not, arama/WhatsApp ve eslesen aktif ilanlari gorme akisi eklendi.
+- Ilan duzenleme ekraninda ilgilenen musterileri ekleme/cikarma ve satista opsiyonel alici musteri secme eklendi.
+- Duzenleme ekranina aktif/satilan/silinen sekmeleri, ilan silme, silineni geri alma ve satilan ilani tekrar aktife alma akislari eklendi.
+- Gizli bilgi butonu sadece goz simgesine indirildi; gizli panelde ilgilenen musteriler ve varsa satin alan musteri gosterilir.
+- Veri aktarim paketleri artik musterileri ve ilan-musteri ilgi/satis baglantilarini da tasir.
+
 ## 1.0.6
 
 - Yakindaki ilanlarda 1 km seceneginin acilmama hatasi duzeltildi.

@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/add_edit_listing_screen.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/data_transfer_screen.dart';
+import 'screens/customers_screen.dart';
 import 'screens/edit_selection_screen.dart';
 import 'screens/listing_screen.dart';
 import 'screens/settings_screen.dart';
@@ -84,6 +85,7 @@ enum AppSection {
   listings,
   add,
   edit,
+  customers,
   sold,
   analysis,
   dataTransfer,
@@ -97,6 +99,8 @@ enum AppSection {
         return 'Ekleme';
       case AppSection.edit:
         return 'Düzenleme';
+      case AppSection.customers:
+        return 'Müşteriler';
       case AppSection.sold:
         return 'Satılanlar';
       case AppSection.analysis:
@@ -116,6 +120,8 @@ enum AppSection {
         return Icons.add_business_outlined;
       case AppSection.edit:
         return Icons.edit_note_outlined;
+      case AppSection.customers:
+        return Icons.people_alt_outlined;
       case AppSection.sold:
         return Icons.inventory_2_outlined;
       case AppSection.analysis:
@@ -245,6 +251,13 @@ class _AppHomeState extends State<AppHome> {
           database: _database,
           addressRepository: _addressRepository,
           photoService: _photoService,
+          onChanged: _dataChanged,
+          refreshNonce: _refreshNonce,
+        );
+      case AppSection.customers:
+        return CustomersScreen(
+          database: _database,
+          addressRepository: _addressRepository,
           onChanged: _dataChanged,
           refreshNonce: _refreshNonce,
         );

@@ -4,17 +4,20 @@ Sorgun Emlak Defteri, Android icin hazirlanan cevrimdisi bir emlak takip uygulam
 
 ## Ozellikler
 
-- Hamburger menulu ana ekran: Listeleme, Ekleme, Duzenleme ve Satilanlar.
+- Hamburger menulu ana ekran: Listeleme, Ekleme, Duzenleme, Musteriler ve Satilanlar.
 - Daire, arsa ve tarla icin ayri alanlar.
 - Sorgun/Yozgat mahalle, koy ve cadde/sokak/yol seed verisi.
 - Galeri ve kamera ile coklu fotograf ekleme.
 - Maliyet, satis fiyati, kar ve kar yuzdesi hesabi.
 - Aramali mahalle/koy ve cadde/sokak/yol secimi.
 - Ilanlara haritadan konum secme, konumu acma ve konum paylasma.
-- Uc telefon icin veritabani ve fotograflari tek dosyada disa/ice aktarma.
+- Uc telefon icin ilanlari, musterileri, baglantilari ve fotograflari tek dosyada disa/ice aktarma.
 - Tek tikla acilip kapanan gizli bilgi paneli.
 - Arsa ve tarla icin metrekare/donum secimli alan, imar, yola cephe, tapu ve elektrik/su bilgileri.
 - WhatsApp/Instagram hikayesi icin galeriye kaydedilebilir reklam gorseli olusturma.
+- Musteri kaydi, rehberden kisi secme, butce/istek filtresi, arama ve WhatsApp kisayollari.
+- Ilanlara ilgilenen musteri baglama ve satista opsiyonel alici musteri secme.
+- Duzenleme ekranindan ilan silme, silineni geri alma ve satilan ilani tekrar aktif yapma.
 - Fiyat degisikliklerinde otomatik fiyat gecmisi.
 - Satildi akisi: gercek satis fiyati girilir, ilan aktif listeden cikar ve Satilanlar arsivine duser.
 - GitHub Actions ile release APK artifact uretimi.

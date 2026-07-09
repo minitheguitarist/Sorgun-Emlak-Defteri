@@ -44,7 +44,7 @@ class ListingScreen extends StatefulWidget {
 
 class _ListingScreenState extends State<ListingScreen> {
   late Future<AddressBook> _addressFuture;
-  late Future<List<PropertyListing>> _listingsFuture;
+  late Future<_ListingsData> _listingsFuture;
   _ListingsView _view = _ListingsView.list;
   bool _searchOpen = false;
   DealType? _dealType;
@@ -71,7 +71,7 @@ class _ListingScreenState extends State<ListingScreen> {
   void initState() {
     super.initState();
     _addressFuture = widget.addressRepository.load();
-    _listingsFuture = widget.database.getActiveListings();
+    _listingsFuture = _loadListings();
   }
 
   @override
@@ -101,9 +101,15 @@ class _ListingScreenState extends State<ListingScreen> {
 
   Future<void> _refresh() async {
     setState(() {
-      _listingsFuture = widget.database.getActiveListings();
+      _listingsFuture = _loadListings();
     });
     await _listingsFuture;
+  }
+
+  Future<_ListingsData> _loadListings() async {
+    final listings = await widget.database.getActiveListings();
+    final interestCounts = await widget.database.getListingInterestCounts();
+    return _ListingsData(listings: listings, interestCounts: interestCounts);
   }
 
   @override
@@ -133,14 +139,15 @@ class _ListingScreenState extends State<ListingScreen> {
               onFilterPressed: () => _showFilters(addressBook),
             ),
             Expanded(
-              child: FutureBuilder<List<PropertyListing>>(
+              child: FutureBuilder<_ListingsData>(
                 future: _listingsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final allListings = snapshot.data ?? const [];
+                  final data = snapshot.data ?? const _ListingsData();
+                  final allListings = data.listings;
                   final listings = _applyFilters(allListings);
                   if (allListings.isEmpty) {
                     return const EmptyState(
@@ -184,6 +191,7 @@ class _ListingScreenState extends State<ListingScreen> {
                           padding: EdgeInsets.zero,
                           child: ListingCard(
                             listing: listing,
+                            interestCount: data.interestCounts[listing.id] ?? 0,
                             onTap: () => _openListing(listing),
                           ),
                         );
@@ -846,6 +854,16 @@ class _ListingScreenState extends State<ListingScreen> {
     }
     return parsed;
   }
+}
+
+class _ListingsData {
+  const _ListingsData({
+    this.listings = const [],
+    this.interestCounts = const {},
+  });
+
+  final List<PropertyListing> listings;
+  final Map<int, int> interestCounts;
 }
 
 class _ListingToolbar extends StatelessWidget {

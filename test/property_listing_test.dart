@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sorgun_emlak_defteri/models/customer.dart';
 import 'package:sorgun_emlak_defteri/models/property_listing.dart';
 import 'package:sorgun_emlak_defteri/models/property_type.dart';
 import 'package:sorgun_emlak_defteri/services/formatters.dart';
@@ -214,5 +215,98 @@ void main() {
 
     expect(restored.squareMeters, 5000);
     expect(restored.areaUnit, AreaUnit.decare);
+  });
+
+  test('ilan silme ve satis musteri baglantisi map icinde korunur', () {
+    final now = DateTime(2026, 1, 1);
+    final deletedAt = DateTime(2026, 1, 2);
+    final listing = PropertyListing(
+      type: PropertyType.land,
+      placeKind: PlaceKind.neighborhood,
+      placeName: 'Yeni Mahallesi',
+      streetName: '',
+      blockNo: '12',
+      parcelNo: '8',
+      costPrice: 2000,
+      salePrice: 2500,
+      description: '',
+      photoPaths: const [],
+      isSold: true,
+      soldPrice: 2400,
+      soldAt: now,
+      soldCustomerId: 7,
+      isDeleted: true,
+      deletedAt: deletedAt,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = PropertyListing.fromMap(listing.toMap());
+
+    expect(restored.soldCustomerId, 7);
+    expect(restored.isDeleted, isTrue);
+    expect(restored.deletedAt, deletedAt);
+  });
+
+  test('musteri istek filtresi aktif ilanlari butceye gore eslestirir', () {
+    final now = DateTime(2026, 1, 1);
+    final filter = const CustomerRequestFilter(
+      dealType: DealType.sale,
+      type: PropertyType.apartment,
+      roomLayout: '3+1',
+      minSquareMeters: 120,
+      maxSquareMeters: 160,
+    );
+    final matching = PropertyListing(
+      type: PropertyType.apartment,
+      dealType: DealType.sale,
+      placeKind: PlaceKind.neighborhood,
+      placeName: 'Yeni Mahallesi',
+      streetName: 'Cumhuriyet Cadde',
+      roomLayout: '3+1',
+      squareMeters: 140,
+      costPrice: 1000,
+      salePrice: 2500,
+      description: '',
+      photoPaths: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+    final expensive = matching.copyWith(salePrice: 5000);
+    final sold = matching.copyWith(isSold: true);
+
+    expect(filter.matches(matching, minBudget: 2000, maxBudget: 3000), isTrue);
+    expect(
+        filter.matches(expensive, minBudget: 2000, maxBudget: 3000), isFalse);
+    expect(filter.matches(sold, minBudget: 2000, maxBudget: 3000), isFalse);
+  });
+
+  test('musteri map icinde butce not ve istek filtresini korur', () {
+    final now = DateTime(2026, 1, 1);
+    final customer = Customer(
+      fullName: 'Ali Veli',
+      phone: '05551234567',
+      minBudget: 1500,
+      maxBudget: 3000,
+      notes: 'Acele bakiyor',
+      requestFilter: const CustomerRequestFilter(
+        type: PropertyType.field,
+        minSquareMeters: 5000,
+        areaUnit: AreaUnit.decare,
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = Customer.fromMap(customer.toMap());
+
+    expect(restored.fullName, 'Ali Veli');
+    expect(restored.phone, '05551234567');
+    expect(restored.minBudget, 1500);
+    expect(restored.maxBudget, 3000);
+    expect(restored.notes, 'Acele bakiyor');
+    expect(restored.requestFilter.type, PropertyType.field);
+    expect(restored.requestFilter.minSquareMeters, 5000);
+    expect(restored.requestFilter.areaUnit, AreaUnit.decare);
   });
 }

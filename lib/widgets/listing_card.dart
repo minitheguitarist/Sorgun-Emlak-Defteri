@@ -13,12 +13,14 @@ class ListingCard extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.showSoldPrice = false,
+    this.interestCount = 0,
   });
 
   final PropertyListing listing;
   final VoidCallback onTap;
   final Widget? trailing;
   final bool showSoldPrice;
+  final int interestCount;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +70,22 @@ class ListingCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (interestCount > 0) ...[
+                            const SizedBox(width: 6),
+                            Tooltip(
+                              message: '$interestCount müşteri ilgileniyor',
+                              child: Chip(
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                avatar: const Icon(
+                                  Icons.people_alt_outlined,
+                                  size: 16,
+                                ),
+                                label: Text(interestCount.toString()),
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           if (trailing != null) trailing!,
                         ],

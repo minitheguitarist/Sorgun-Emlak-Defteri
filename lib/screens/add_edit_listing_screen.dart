@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/customer.dart';
 import '../models/property_listing.dart';
 import '../models/property_type.dart';
 import '../services/address_repository.dart';
@@ -71,9 +72,12 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _saleController;
   late final TextEditingController _descriptionController;
   late List<String> _photoPaths;
+  late Future<List<Customer>> _customersFuture;
+  Set<int> _interestedCustomerIds = <int>{};
   double? _latitude;
   double? _longitude;
   bool _saving = false;
+  bool _interestsLoaded = false;
 
   bool get _isEditing => widget.listing != null;
 
@@ -145,6 +149,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _photoPaths = [...?listing?.photoPaths];
     _latitude = listing?.latitude;
     _longitude = listing?.longitude;
+    _customersFuture = widget.database.getCustomers();
+    if (listing?.id != null) {
+      _loadInterestedCustomers(listing!.id!);
+    }
     _costController.addListener(_recalculate);
     _saleController.addListener(_recalculate);
   }
@@ -736,23 +744,64 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             onTakePhoto: _takePhoto,
             onRemove: (path) => setState(() => _photoPaths.remove(path)),
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: 20),
+            _InterestedCustomersEditor(
+              customersFuture: _customersFuture,
+              selectedIds: _interestedCustomerIds,
+              loaded: _interestsLoaded,
+              onAdd: _addInterestedCustomer,
+              onRemove: (id) {
+                setState(() => _interestedCustomerIds.remove(id));
+              },
+            ),
+          ],
           const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(_isEditing ? 'Değişiklikleri kaydet' : 'İlanı kaydet'),
-          ),
-          if (_isEditing && widget.listing?.isSold == false) ...[
+          if (!(widget.listing?.isDeleted ?? false))
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label:
+                  Text(_isEditing ? 'Değişiklikleri kaydet' : 'İlanı kaydet'),
+            ),
+          if (_isEditing &&
+              widget.listing?.isSold == false &&
+              widget.listing?.isDeleted == false) ...[
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: _saving ? null : _showSoldDialog,
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Satıldı olarak işaretle'),
+            ),
+          ],
+          if (_isEditing &&
+              widget.listing?.isSold == true &&
+              widget.listing?.isDeleted == false) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _reactivateListing,
+              icon: const Icon(Icons.replay_outlined),
+              label: const Text('Tekrar aktif satılığa al'),
+            ),
+          ],
+          if (_isEditing && widget.listing?.isDeleted == false) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _confirmDeleteListing,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('İlanı sil'),
+            ),
+          ],
+          if (_isEditing && widget.listing?.isDeleted == true) ...[
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _restoreListing,
+              icon: const Icon(Icons.restore_outlined),
+              label: const Text('İlanı geri al'),
             ),
           ],
         ],
@@ -886,6 +935,70 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     }
   }
 
+  Future<void> _loadInterestedCustomers(int listingId) async {
+    final ids = await widget.database.getInterestedCustomerIds(listingId);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _interestedCustomerIds = ids.toSet();
+      _interestsLoaded = true;
+    });
+  }
+
+  Future<void> _addInterestedCustomer() async {
+    final customers = await _customersFuture;
+    if (!mounted) {
+      return;
+    }
+    final available = customers
+        .where((customer) =>
+            customer.id != null &&
+            !_interestedCustomerIds.contains(customer.id))
+        .toList();
+    if (available.isEmpty) {
+      _showSnack('Eklenebilecek müşteri yok.');
+      return;
+    }
+
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+                child: Text(
+                  'İlgilenen müşteri ekle',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+              for (final customer in available)
+                ListTile(
+                  leading: const Icon(Icons.person_add_alt_outlined),
+                  title: Text(customer.fullName),
+                  subtitle: customer.phone.trim().isEmpty
+                      ? null
+                      : Text(customer.phone),
+                  onTap: () => Navigator.of(context).pop(customer.id),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) {
+      return;
+    }
+    setState(() => _interestedCustomerIds.add(selected));
+  }
+
   Future<void> _save() async {
     if (_dealType == null) {
       _showSnack('Satılık veya kiralık seçin.');
@@ -974,6 +1087,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         isSold: previous?.isSold ?? false,
         soldPrice: previous?.soldPrice,
         soldAt: previous?.soldAt,
+        soldCustomerId: previous?.soldCustomerId,
+        isDeleted: previous?.isDeleted ?? false,
+        deletedAt: previous?.deletedAt,
         createdAt: previous?.createdAt ?? now,
         updatedAt: now,
       );
@@ -982,6 +1098,13 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         await widget.database.insertListing(listing);
       } else {
         await widget.database.updateListing(listing);
+        final listingId = previous.id;
+        if (listingId != null) {
+          await widget.database.setListingInterests(
+            listingId: listingId,
+            customerIds: _interestedCustomerIds,
+          );
+        }
       }
 
       if (!mounted) {
@@ -1002,24 +1125,150 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   }
 
   Future<void> _showSoldDialog() async {
-    final soldPrice = await showDialog<double>(
+    final customers = await _customersFuture;
+    if (!mounted) {
+      return;
+    }
+    final result = await showDialog<_SoldListingResult>(
       context: context,
-      builder: (context) =>
-          _SoldPriceDialog(initialValue: _saleController.text),
+      builder: (context) => _SoldPriceDialog(
+        initialValue: _saleController.text,
+        customers: customers,
+      ),
     );
 
     final id = widget.listing?.id;
-    if (soldPrice == null || id == null) {
+    if (result == null || id == null) {
       return;
     }
 
     setState(() => _saving = true);
     try {
-      await widget.database.markSold(listingId: id, soldPrice: soldPrice);
+      await widget.database.markSold(
+        listingId: id,
+        soldPrice: result.soldPrice,
+        soldCustomerId: result.customerId,
+      );
       if (!mounted) {
         return;
       }
       _showSnack('İlan satılanlara taşındı.');
+      if (widget.standalone) {
+        Navigator.of(context).pop(true);
+      } else {
+        widget.onSaved?.call();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _reactivateListing() async {
+    final id = widget.listing?.id;
+    if (id == null) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tekrar aktif yapılsın mı?'),
+        content: const Text(
+          'İlan satılanlardan çıkar ve aktif ilanlar arasında görünür.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Aktif yap'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.database.reactivateListing(id);
+      if (!mounted) {
+        return;
+      }
+      _showSnack('İlan tekrar aktif yapıldı.');
+      if (widget.standalone) {
+        Navigator.of(context).pop(true);
+      } else {
+        widget.onSaved?.call();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteListing() async {
+    final id = widget.listing?.id;
+    if (id == null) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('İlan silinsin mi?'),
+        content: const Text(
+          'İlan çöp kutusuna taşınır. Düzenleme ekranındaki Silinenler sekmesinden geri alınabilir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.database.softDeleteListing(id);
+      if (!mounted) {
+        return;
+      }
+      _showSnack('İlan silinenlere taşındı.');
+      if (widget.standalone) {
+        Navigator.of(context).pop(true);
+      } else {
+        widget.onSaved?.call();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _restoreListing() async {
+    final id = widget.listing?.id;
+    if (id == null) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.database.restoreListing(id);
+      if (!mounted) {
+        return;
+      }
+      _showSnack('İlan geri alındı.');
       if (widget.standalone) {
         Navigator.of(context).pop(true);
       } else {
@@ -1336,10 +1585,24 @@ class _AddressSuggestionDialogState extends State<_AddressSuggestionDialog> {
   }
 }
 
+class _SoldListingResult {
+  const _SoldListingResult({
+    required this.soldPrice,
+    required this.customerId,
+  });
+
+  final double soldPrice;
+  final int? customerId;
+}
+
 class _SoldPriceDialog extends StatefulWidget {
-  const _SoldPriceDialog({required this.initialValue});
+  const _SoldPriceDialog({
+    required this.initialValue,
+    required this.customers,
+  });
 
   final String initialValue;
+  final List<Customer> customers;
 
   @override
   State<_SoldPriceDialog> createState() => _SoldPriceDialogState();
@@ -1347,6 +1610,7 @@ class _SoldPriceDialog extends StatefulWidget {
 
 class _SoldPriceDialogState extends State<_SoldPriceDialog> {
   late final TextEditingController _controller;
+  int? _customerId;
 
   @override
   void initState() {
@@ -1364,15 +1628,40 @@ class _SoldPriceDialogState extends State<_SoldPriceDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Satış fiyatı'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(
-          labelText: 'Gerçek satış fiyatı',
-          prefixIcon: Icon(Icons.payments_outlined),
-        ),
-        onSubmitted: (_) => _submit(),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Gerçek satış fiyatı',
+              prefixIcon: Icon(Icons.payments_outlined),
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            initialValue: _customerId,
+            decoration: const InputDecoration(
+              labelText: 'Kime satıldı? (opsiyonel)',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+            items: [
+              const DropdownMenuItem<int>(
+                child: Text('Müşteri seçme'),
+              ),
+              ...widget.customers.where((customer) => customer.id != null).map(
+                    (customer) => DropdownMenuItem<int>(
+                      value: customer.id,
+                      child: Text(customer.fullName),
+                    ),
+                  ),
+            ],
+            onChanged: (value) => setState(() => _customerId = value),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -1390,8 +1679,95 @@ class _SoldPriceDialogState extends State<_SoldPriceDialog> {
   void _submit() {
     final value = parseMoneyInput(_controller.text);
     if (value > 0) {
-      Navigator.of(context).pop(value);
+      Navigator.of(context).pop(
+        _SoldListingResult(soldPrice: value, customerId: _customerId),
+      );
     }
+  }
+}
+
+class _InterestedCustomersEditor extends StatelessWidget {
+  const _InterestedCustomersEditor({
+    required this.customersFuture,
+    required this.selectedIds,
+    required this.loaded,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final Future<List<Customer>> customersFuture;
+  final Set<int> selectedIds;
+  final bool loaded;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FutureBuilder<List<Customer>>(
+      future: customersFuture,
+      builder: (context, snapshot) {
+        final customers = snapshot.data ?? const [];
+        final selected = customers
+            .where((customer) =>
+                customer.id != null && selectedIds.contains(customer.id))
+            .toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'İlgilenen müşteriler',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: snapshot.connectionState == ConnectionState.waiting
+                      ? null
+                      : onAdd,
+                  icon: const Icon(Icons.person_add_alt_outlined),
+                  label: const Text('Ekle'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (!loaded || snapshot.connectionState == ConnectionState.waiting)
+              const LinearProgressIndicator()
+            else if (customers.isEmpty)
+              Text(
+                'Önce Müşteriler bölümünden müşteri kaydı ekleyin.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else if (selected.isEmpty)
+              Text(
+                'Bu ilanla ilgilenen müşteri eklenmedi.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final customer in selected)
+                    InputChip(
+                      avatar: const Icon(Icons.person_outline, size: 18),
+                      label: Text(customer.fullName),
+                      onDeleted: () => onRemove(customer.id!),
+                    ),
+                ],
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 

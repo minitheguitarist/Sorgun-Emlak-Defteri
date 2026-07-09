@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/customer.dart';
 import '../models/price_history.dart';
 import '../models/property_listing.dart';
 import '../models/property_type.dart';
@@ -32,22 +33,33 @@ class PropertyDetailScreen extends StatefulWidget {
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   late PropertyListing _listing;
-  late Future<List<PriceHistory>> _historyFuture;
+  late Future<_PrivateListingData> _privateDataFuture;
   bool _privateVisible = false;
 
   @override
   void initState() {
     super.initState();
     _listing = widget.listing;
-    _historyFuture = _loadHistory();
+    _privateDataFuture = _loadPrivateData();
   }
 
-  Future<List<PriceHistory>> _loadHistory() {
+  Future<_PrivateListingData> _loadPrivateData() async {
     final id = _listing.id;
     if (id == null) {
-      return Future.value(const []);
+      return const _PrivateListingData();
     }
-    return widget.database.getPriceHistory(id);
+    final history = await widget.database.getPriceHistory(id);
+    final interestedCustomers =
+        await widget.database.getInterestedCustomers(id);
+    final soldCustomerId = _listing.soldCustomerId;
+    final soldCustomer = soldCustomerId == null
+        ? null
+        : await widget.database.getCustomer(soldCustomerId);
+    return _PrivateListingData(
+      history: history,
+      interestedCustomers: interestedCustomers,
+      soldCustomer: soldCustomer,
+    );
   }
 
   @override
@@ -141,19 +153,19 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     label: const Text('Reklam oluştur'),
                   ),
                   const SizedBox(height: 10),
-                  FilledButton.tonalIcon(
-                    onPressed: () {
-                      setState(() => _privateVisible = !_privateVisible);
-                    },
-                    icon: Icon(
-                      _privateVisible
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                    label: Text(
-                      _privateVisible
-                          ? 'Gizli bilgileri kapat'
-                          : 'Gizli bilgileri göster',
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton.filledTonal(
+                      tooltip:
+                          _privateVisible ? 'Gizli bilgileri kapat' : 'Gizli',
+                      onPressed: () {
+                        setState(() => _privateVisible = !_privateVisible);
+                      },
+                      icon: Icon(
+                        _privateVisible
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
                     ),
                   ),
                   AnimatedSwitcher(
@@ -164,7 +176,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ? _PrivatePanel(
                             key: const ValueKey('private-panel'),
                             listing: _listing,
-                            historyFuture: _historyFuture,
+                            privateDataFuture: _privateDataFuture,
                           )
                         : const SizedBox.shrink(
                             key: ValueKey('private-panel-hidden'),
@@ -854,115 +866,170 @@ class _PrivatePanel extends StatelessWidget {
   const _PrivatePanel({
     super.key,
     required this.listing,
-    required this.historyFuture,
+    required this.privateDataFuture,
   });
 
   final PropertyListing listing;
-  final Future<List<PriceHistory>> historyFuture;
+  final Future<_PrivateListingData> privateDataFuture;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color:
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Gizli bilgiler',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+    return FutureBuilder<_PrivateListingData>(
+      future: privateDataFuture,
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? const _PrivateListingData();
+        return Container(
+          margin: const EdgeInsets.only(top: 14),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _InfoTile(
-                compact: true,
-                label: 'Maliyet',
-                value: formatMoney(listing.costPrice),
-              ),
-              _InfoTile(
-                compact: true,
-                label: 'Güncel kar',
-                value: formatMoney(listing.activeProfit),
-              ),
-              _InfoTile(
-                compact: true,
-                label: 'Güncel kar marjı',
-                value: formatPercent(listing.activeProfitPercent),
-              ),
-              if (listing.isSold) ...[
-                _InfoTile(
-                  compact: true,
-                  label: 'Satış',
-                  value: formatMoney(listing.finalPrice),
+              Text(
+                'Gizli bilgiler',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
                 ),
-                _InfoTile(
-                  compact: true,
-                  label: 'Nihai kar',
-                  value: formatMoney(listing.finalProfit),
-                ),
-                _InfoTile(
-                  compact: true,
-                  label: 'Nihai kar marjı',
-                  value: formatPercent(listing.finalProfitPercent),
+              ),
+              if (snapshot.connectionState == ConnectionState.waiting) ...[
+                const SizedBox(height: 10),
+                const LinearProgressIndicator(),
+              ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _InfoTile(
+                    compact: true,
+                    label: 'Maliyet',
+                    value: formatMoney(listing.costPrice),
+                  ),
+                  _InfoTile(
+                    compact: true,
+                    label: 'Güncel kar',
+                    value: formatMoney(listing.activeProfit),
+                  ),
+                  _InfoTile(
+                    compact: true,
+                    label: 'Güncel kar marjı',
+                    value: formatPercent(listing.activeProfitPercent),
+                  ),
+                  _InfoTile(
+                    compact: true,
+                    label: 'İlgilenen',
+                    value: data.interestedCustomers.length.toString(),
+                  ),
+                  if (listing.isSold) ...[
+                    _InfoTile(
+                      compact: true,
+                      label: 'Satış',
+                      value: formatMoney(listing.finalPrice),
+                    ),
+                    _InfoTile(
+                      compact: true,
+                      label: 'Nihai kar',
+                      value: formatMoney(listing.finalProfit),
+                    ),
+                    _InfoTile(
+                      compact: true,
+                      label: 'Nihai kar marjı',
+                      value: formatPercent(listing.finalProfitPercent),
+                    ),
+                  ],
+                ],
+              ),
+              if (data.soldCustomer != null) ...[
+                const SizedBox(height: 14),
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.person_pin_circle_outlined),
+                  title: const Text('Satın alan müşteri'),
+                  subtitle: Text(
+                    '${data.soldCustomer!.fullName} • ${data.soldCustomer!.phone}',
+                  ),
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Fiyat geçmişi',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          FutureBuilder<List<PriceHistory>>(
-            future: historyFuture,
-            builder: (context, snapshot) {
-              final history = snapshot.data ?? const [];
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const LinearProgressIndicator();
-              }
-              if (history.isEmpty) {
-                return Text(
+              const SizedBox(height: 16),
+              Text(
+                'İlgilenen müşteriler',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (data.interestedCustomers.isEmpty)
+                Text(
+                  'İlgilenen müşteri eklenmedi.',
+                  style: theme.textTheme.bodyMedium,
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final customer in data.interestedCustomers)
+                      Chip(
+                        avatar: const Icon(Icons.person_outline, size: 18),
+                        label: Text(customer.fullName),
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              Text(
+                'Fiyat geçmişi',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (data.history.isEmpty)
+                Text(
                   'Henüz fiyat değişikliği yok.',
                   style: theme.textTheme.bodyMedium,
-                );
-              }
-              return Column(
-                children: history.map((item) {
-                  final direction = item.newPrice >= item.oldPrice
-                      ? Icons.trending_up
-                      : Icons.trending_down;
-                  return ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(direction),
-                    title: Text(
-                      '${formatMoney(item.oldPrice)} -> ${formatMoney(item.newPrice)}',
-                    ),
-                    subtitle: Text(formatDate(item.changedAt)),
-                  );
-                }).toList(),
-              );
-            },
+                )
+              else
+                Column(
+                  children: data.history.map((item) {
+                    final direction = item.newPrice >= item.oldPrice
+                        ? Icons.trending_up
+                        : Icons.trending_down;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(direction),
+                      title: Text(
+                        '${formatMoney(item.oldPrice)} -> ${formatMoney(item.newPrice)}',
+                      ),
+                      subtitle: Text(formatDate(item.changedAt)),
+                    );
+                  }).toList(),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+}
+
+class _PrivateListingData {
+  const _PrivateListingData({
+    this.history = const [],
+    this.interestedCustomers = const [],
+    this.soldCustomer,
+  });
+
+  final List<PriceHistory> history;
+  final List<Customer> interestedCustomers;
+  final Customer? soldCustomer;
 }
 
 class _InfoTile extends StatelessWidget {

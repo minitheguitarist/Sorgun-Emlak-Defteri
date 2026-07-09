@@ -39,6 +39,9 @@ class PropertyListing {
     this.isSold = false,
     this.soldPrice,
     this.soldAt,
+    this.soldCustomerId,
+    this.isDeleted = false,
+    this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -78,6 +81,9 @@ class PropertyListing {
   final bool isSold;
   final double? soldPrice;
   final DateTime? soldAt;
+  final int? soldCustomerId;
+  final bool isDeleted;
+  final DateTime? deletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -201,6 +207,9 @@ class PropertyListing {
     bool? isSold,
     double? soldPrice,
     DateTime? soldAt,
+    int? soldCustomerId,
+    bool? isDeleted,
+    DateTime? deletedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -240,6 +249,9 @@ class PropertyListing {
       isSold: isSold ?? this.isSold,
       soldPrice: soldPrice ?? this.soldPrice,
       soldAt: soldAt ?? this.soldAt,
+      soldCustomerId: soldCustomerId ?? this.soldCustomerId,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -282,6 +294,9 @@ class PropertyListing {
       'is_sold': isSold ? 1 : 0,
       'sold_price': soldPrice,
       'sold_at': soldAt?.toIso8601String(),
+      'sold_customer_id': soldCustomerId,
+      'is_deleted': isDeleted ? 1 : 0,
+      'deleted_at': deletedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -335,6 +350,11 @@ class PropertyListing {
       soldAt: map['sold_at'] == null
           ? null
           : DateTime.parse(map['sold_at'] as String),
+      soldCustomerId: (map['sold_customer_id'] as num?)?.toInt(),
+      isDeleted: (map['is_deleted'] as int? ?? 0) == 1,
+      deletedAt: map['deleted_at'] == null
+          ? null
+          : DateTime.parse(map['deleted_at'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

@@ -17,6 +17,11 @@ class DataTransferService {
     final db = await _database.database;
     final listings = await db.query('listings', orderBy: 'id ASC');
     final history = await db.query('price_history', orderBy: 'id ASC');
+    final customers = await db.query('customers', orderBy: 'id ASC');
+    final interests = await db.query(
+      'listing_interests',
+      orderBy: 'listing_id ASC, customer_id ASC',
+    );
     final archive = Archive();
     final exportListings = <Map<String, Object?>>[];
     var photoIndex = 0;
@@ -50,9 +55,10 @@ class DataTransferService {
         jsonEncode({
           'format': 'sorgun-emlak-defteri',
           'schemaVersion': 1,
-          'databaseVersion': 7,
+          'databaseVersion': 8,
           'exportedAt': DateTime.now().toIso8601String(),
           'listingCount': exportListings.length,
+          'customerCount': customers.length,
           'photoCount': photoIndex,
         }),
       ),
@@ -63,6 +69,8 @@ class DataTransferService {
         jsonEncode({
           'listings': exportListings,
           'price_history': history,
+          'customers': customers,
+          'listing_interests': interests,
         }),
       ),
     );
@@ -91,6 +99,8 @@ class DataTransferService {
 
     final rawListings = decoded['listings'];
     final rawHistory = decoded['price_history'];
+    final rawCustomers = decoded['customers'];
+    final rawInterests = decoded['listing_interests'];
     if (rawListings is! List || rawHistory is! List) {
       throw const FormatException('Veri paketi eksik.');
     }
@@ -140,9 +150,23 @@ class DataTransferService {
         .map(_dynamicMap)
         .map((row) => _onlyColumns(row, _historyColumns))
         .toList();
+    final importedCustomers = rawCustomers is List
+        ? rawCustomers
+            .map(_dynamicMap)
+            .map((row) => _onlyColumns(row, _customerColumns))
+            .toList()
+        : <Map<String, Object?>>[];
+    final importedInterests = rawInterests is List
+        ? rawInterests
+            .map(_dynamicMap)
+            .map((row) => _onlyColumns(row, _interestColumns))
+            .toList()
+        : <Map<String, Object?>>[];
 
     final db = await _database.database;
     await db.transaction((txn) async {
+      await txn.delete('listing_interests');
+      await txn.delete('customers');
       await txn.delete('price_history');
       await txn.delete('listings');
       for (final row in importedListings) {
@@ -150,6 +174,12 @@ class DataTransferService {
       }
       for (final row in importedHistory) {
         await txn.insert('price_history', row);
+      }
+      for (final row in importedCustomers) {
+        await txn.insert('customers', row);
+      }
+      for (final row in importedInterests) {
+        await txn.insert('listing_interests', row);
       }
     });
 
@@ -160,6 +190,7 @@ class DataTransferService {
 
     return DataImportSummary(
       listingCount: importedListings.length,
+      customerCount: importedCustomers.length,
       photoCount: importedPhotoCount,
       backupPath: backup.path,
     );
@@ -205,11 +236,13 @@ class DataTransferService {
 class DataImportSummary {
   const DataImportSummary({
     required this.listingCount,
+    required this.customerCount,
     required this.photoCount,
     required this.backupPath,
   });
 
   final int listingCount;
+  final int customerCount;
   final int photoCount;
   final String backupPath;
 }
@@ -250,6 +283,9 @@ const _listingColumns = {
   'is_sold',
   'sold_price',
   'sold_at',
+  'sold_customer_id',
+  'is_deleted',
+  'deleted_at',
   'created_at',
   'updated_at',
 };
@@ -260,4 +296,22 @@ const _historyColumns = {
   'old_price',
   'new_price',
   'changed_at',
+};
+
+const _customerColumns = {
+  'id',
+  'full_name',
+  'phone',
+  'min_budget',
+  'max_budget',
+  'notes',
+  'request_json',
+  'created_at',
+  'updated_at',
+};
+
+const _interestColumns = {
+  'listing_id',
+  'customer_id',
+  'created_at',
 };
