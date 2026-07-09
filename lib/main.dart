@@ -6,6 +6,7 @@ import 'screens/analysis_screen.dart';
 import 'screens/data_transfer_screen.dart';
 import 'screens/edit_selection_screen.dart';
 import 'screens/listing_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/sold_screen.dart';
 import 'services/address_repository.dart';
 import 'services/app_database.dart';
@@ -85,7 +86,8 @@ enum AppSection {
   edit,
   sold,
   analysis,
-  dataTransfer;
+  dataTransfer,
+  settings;
 
   String get title {
     switch (this) {
@@ -101,6 +103,8 @@ enum AppSection {
         return 'Analiz';
       case AppSection.dataTransfer:
         return 'Veri Aktarımı';
+      case AppSection.settings:
+        return 'Ayarlar';
     }
   }
 
@@ -118,6 +122,8 @@ enum AppSection {
         return Icons.analytics_outlined;
       case AppSection.dataTransfer:
         return Icons.sync_alt_outlined;
+      case AppSection.settings:
+        return Icons.settings_outlined;
     }
   }
 }
@@ -257,6 +263,8 @@ class _AppHomeState extends State<AppHome> {
           database: _database,
           onImported: _dataChanged,
         );
+      case AppSection.settings:
+        return SettingsScreen(database: _database);
     }
   }
 }

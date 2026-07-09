@@ -13,6 +13,8 @@ Sorgun Emlak Defteri, Android icin hazirlanan cevrimdisi bir emlak takip uygulam
 - Ilanlara haritadan konum secme, konumu acma ve konum paylasma.
 - Uc telefon icin veritabani ve fotograflari tek dosyada disa/ice aktarma.
 - Tek tikla acilip kapanan gizli bilgi paneli.
+- Arsa ve tarla icin alan, imar, yola cephe, tapu ve elektrik/su bilgileri.
+- WhatsApp/Instagram hikayesi icin galeriye kaydedilebilir reklam gorseli olusturma.
 - Fiyat degisikliklerinde otomatik fiyat gecmisi.
 - Satildi akisi: gercek satis fiyati girilir, ilan aktif listeden cikar ve Satilanlar arsivine duser.
 - GitHub Actions ile release APK artifact uretimi.

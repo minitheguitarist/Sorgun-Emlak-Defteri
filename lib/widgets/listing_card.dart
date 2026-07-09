@@ -106,7 +106,13 @@ class ListingCard extends StatelessWidget {
                           ),
                           if (listing.type != PropertyType.apartment)
                             Text(
-                              listing.parcelLine,
+                              [
+                                if (listing.squareMeters != null &&
+                                    listing.squareMeters! > 0)
+                                  formatArea(listing.squareMeters!),
+                                if (listing.parcelLine.isNotEmpty)
+                                  listing.parcelLine,
+                              ].join(' • '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.labelSmall,

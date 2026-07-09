@@ -59,6 +59,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _floorCountController;
   late final TextEditingController _floorNumberController;
   late final TextEditingController _frontageController;
+  late final TextEditingController _zoningStatusController;
+  late final TextEditingController _roadFrontageController;
+  late final TextEditingController _deedStatusController;
+  late final TextEditingController _utilitiesController;
   late HousingKind? _housingKind;
   late final TextEditingController _ownerNameController;
   late final TextEditingController _ownerPhoneController;
@@ -114,6 +118,12 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
       text: listing?.floorNumber?.toString() ?? '',
     );
     _frontageController = TextEditingController(text: listing?.frontage);
+    _zoningStatusController =
+        TextEditingController(text: listing?.zoningStatus);
+    _roadFrontageController =
+        TextEditingController(text: listing?.roadFrontage);
+    _deedStatusController = TextEditingController(text: listing?.deedStatus);
+    _utilitiesController = TextEditingController(text: listing?.utilities);
     _housingKind = listing?.housingKind;
     _ownerNameController = TextEditingController(text: listing?.ownerName);
     _ownerPhoneController = TextEditingController(
@@ -148,6 +158,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _floorCountController.dispose();
     _floorNumberController.dispose();
     _frontageController.dispose();
+    _zoningStatusController.dispose();
+    _roadFrontageController.dispose();
+    _deedStatusController.dispose();
+    _utilitiesController.dispose();
     _ownerNameController.dispose();
     _ownerPhoneController.dispose();
     _costController.dispose();
@@ -509,44 +523,117 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                           ),
                         ],
                       )
-                    : Row(
+                    : Column(
                         key: const ValueKey('parcel'),
                         children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _blockController,
-                              decoration: const InputDecoration(
-                                labelText: 'Ada',
-                                prefixIcon: Icon(Icons.grid_view_outlined),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _blockController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Ada',
+                                    prefixIcon: Icon(Icons.grid_view_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (_type == null ||
+                                        _type == PropertyType.apartment) {
+                                      return null;
+                                    }
+                                    return (value ?? '').trim().isEmpty
+                                        ? 'Ada girin.'
+                                        : null;
+                                  },
+                                ),
                               ),
-                              validator: (value) {
-                                if (_type == null ||
-                                    _type == PropertyType.apartment) {
-                                  return null;
-                                }
-                                return (value ?? '').trim().isEmpty
-                                    ? 'Ada girin.'
-                                    : null;
-                              },
-                            ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _parcelController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Parsel',
+                                    prefixIcon:
+                                        Icon(Icons.crop_square_outlined),
+                                  ),
+                                  validator: (value) {
+                                    if (_type == null ||
+                                        _type == PropertyType.apartment) {
+                                      return null;
+                                    }
+                                    return (value ?? '').trim().isEmpty
+                                        ? 'Parsel girin.'
+                                        : null;
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _parcelController,
-                              decoration: const InputDecoration(
-                                labelText: 'Parsel',
-                                prefixIcon: Icon(Icons.crop_square_outlined),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _squareMetersController,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Alan',
+                                    suffixText: 'm²',
+                                    prefixIcon:
+                                        Icon(Icons.square_foot_outlined),
+                                  ),
+                                  validator: _optionalAreaValidator,
+                                ),
                               ),
-                              validator: (value) {
-                                if (_type == null ||
-                                    _type == PropertyType.apartment) {
-                                  return null;
-                                }
-                                return (value ?? '').trim().isEmpty
-                                    ? 'Parsel girin.'
-                                    : null;
-                              },
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _zoningStatusController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'İmar durumu',
+                                    hintText: 'Tarla, konut, ticari...',
+                                    prefixIcon: Icon(Icons.map_outlined),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _roadFrontageController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Yola cephe',
+                                    hintText: 'Var, yok, metre...',
+                                    prefixIcon: Icon(Icons.add_road_outlined),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _deedStatusController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tapu durumu',
+                                    hintText: 'Müstakil, hisseli...',
+                                    prefixIcon:
+                                        Icon(Icons.description_outlined),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _utilitiesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Elektrik / Su',
+                              hintText: 'Yakın, mevcut, yok...',
+                              prefixIcon: Icon(Icons.water_drop_outlined),
                             ),
                           ),
                         ],
@@ -791,9 +878,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         roomLayout: _type == PropertyType.apartment
             ? _roomLayoutController.text.trim()
             : null,
-        squareMeters: _type == PropertyType.apartment
-            ? parseOptionalNumberInput(_squareMetersController.text)
-            : null,
+        squareMeters: parseOptionalNumberInput(_squareMetersController.text),
         buildingAge: _type == PropertyType.apartment
             ? _parseOptionalInt(_buildingAgeController.text)
             : null,
@@ -813,6 +898,18 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         frontage: _type == PropertyType.apartment && frontage.isNotEmpty
             ? frontage
             : null,
+        zoningStatus: _type == PropertyType.apartment
+            ? null
+            : _emptyToNull(_zoningStatusController.text),
+        roadFrontage: _type == PropertyType.apartment
+            ? null
+            : _emptyToNull(_roadFrontageController.text),
+        deedStatus: _type == PropertyType.apartment
+            ? null
+            : _emptyToNull(_deedStatusController.text),
+        utilities: _type == PropertyType.apartment
+            ? null
+            : _emptyToNull(_utilitiesController.text),
         latitude: _latitude,
         longitude: _longitude,
         ownerName: _ownerNameController.text.trim().isEmpty
@@ -950,6 +1047,11 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  String? _emptyToNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.5
+
+- Daire, arsa ve tarla ilanlari icin galeriye kaydedilebilir reklam gorseli olusturma ekrani.
+- Reklamlarda kullanilacak emlak ofisi adi, ad soyad ve telefon icin Ayarlar/Kisisel bilgilerim ekrani.
+- Arsa ve tarla kayitlarina alan, imar durumu, yola cephe, tapu durumu ve elektrik/su bilgileri.
+- Yakindaki ilanlar ekranindan ilana geciste olusabilen siyah ekran/tepkisizlik hatasi duzeltildi.
+
 ## 1.0.4
 
 - Daireler için apartman/site/müstakil ayrımı, kat bilgisi ve cephe alanı.

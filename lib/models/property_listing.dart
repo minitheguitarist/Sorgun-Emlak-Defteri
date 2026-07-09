@@ -22,6 +22,10 @@ class PropertyListing {
     this.floorCount,
     this.floorNumber,
     this.frontage,
+    this.zoningStatus,
+    this.roadFrontage,
+    this.deedStatus,
+    this.utilities,
     this.latitude,
     this.longitude,
     this.ownerName,
@@ -56,6 +60,10 @@ class PropertyListing {
   final int? floorCount;
   final int? floorNumber;
   final String? frontage;
+  final String? zoningStatus;
+  final String? roadFrontage;
+  final String? deedStatus;
+  final String? utilities;
   final double? latitude;
   final double? longitude;
   final String? ownerName;
@@ -174,6 +182,10 @@ class PropertyListing {
     int? floorCount,
     int? floorNumber,
     String? frontage,
+    String? zoningStatus,
+    String? roadFrontage,
+    String? deedStatus,
+    String? utilities,
     double? latitude,
     double? longitude,
     String? ownerName,
@@ -208,6 +220,10 @@ class PropertyListing {
       floorCount: floorCount ?? this.floorCount,
       floorNumber: floorNumber ?? this.floorNumber,
       frontage: frontage ?? this.frontage,
+      zoningStatus: zoningStatus ?? this.zoningStatus,
+      roadFrontage: roadFrontage ?? this.roadFrontage,
+      deedStatus: deedStatus ?? this.deedStatus,
+      utilities: utilities ?? this.utilities,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       ownerName: ownerName ?? this.ownerName,
@@ -245,6 +261,10 @@ class PropertyListing {
       'floor_count': floorCount,
       'floor_number': floorNumber,
       'frontage': frontage,
+      'zoning_status': zoningStatus,
+      'road_frontage': roadFrontage,
+      'deed_status': deedStatus,
+      'utilities': utilities,
       'latitude': latitude,
       'longitude': longitude,
       'owner_name': ownerName,
@@ -291,6 +311,10 @@ class PropertyListing {
       floorCount: (map['floor_count'] as num?)?.toInt(),
       floorNumber: (map['floor_number'] as num?)?.toInt(),
       frontage: map['frontage'] as String?,
+      zoningStatus: map['zoning_status'] as String?,
+      roadFrontage: map['road_frontage'] as String?,
+      deedStatus: map['deed_status'] as String?,
+      utilities: map['utilities'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       ownerName: map['owner_name'] as String?,

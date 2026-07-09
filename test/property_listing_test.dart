@@ -155,4 +155,36 @@ void main() {
     expect(restored.ownerPhone, '05551234567');
     expect(restored.ownerPhoneList, ['05551234567', '05557654321']);
   });
+
+  test('arsa tarla reklam alanlari map icinde korunur', () {
+    final now = DateTime(2026, 1, 1);
+    final listing = PropertyListing(
+      type: PropertyType.land,
+      dealType: DealType.sale,
+      placeKind: PlaceKind.neighborhood,
+      placeName: 'Yeni Mahallesi',
+      streetName: '',
+      blockNo: '123',
+      parcelNo: '45',
+      squareMeters: 2450,
+      zoningStatus: 'Konut',
+      roadFrontage: 'Var',
+      deedStatus: 'Müstakil',
+      utilities: 'Yakın',
+      costPrice: 2000,
+      salePrice: 2500,
+      description: '',
+      photoPaths: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = PropertyListing.fromMap(listing.toMap());
+
+    expect(restored.squareMeters, 2450);
+    expect(restored.zoningStatus, 'Konut');
+    expect(restored.roadFrontage, 'Var');
+    expect(restored.deedStatus, 'Müstakil');
+    expect(restored.utilities, 'Yakın');
+  });
 }

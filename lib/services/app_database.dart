@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../models/price_history.dart';
+import '../models/app_settings.dart';
 import '../models/property_listing.dart';
 
 class AppDatabase {
@@ -16,7 +17,7 @@ class AppDatabase {
     final dbPath = p.join(basePath, 'sorgun_emlak_defteri.db');
     _database = await openDatabase(
       dbPath,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
 CREATE TABLE listings (
@@ -38,6 +39,10 @@ CREATE TABLE listings (
   floor_count INTEGER,
   floor_number INTEGER,
   frontage TEXT,
+  zoning_status TEXT,
+  road_frontage TEXT,
+  deed_status TEXT,
+  utilities TEXT,
   latitude REAL,
   longitude REAL,
   owner_name TEXT,
@@ -70,6 +75,7 @@ CREATE TABLE price_history (
         await db.execute(
           'CREATE INDEX idx_history_listing ON price_history(listing_id)',
         );
+        await _createSettingsTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -109,9 +115,55 @@ CREATE TABLE price_history (
             'ALTER TABLE listings ADD COLUMN owner_phones_json TEXT',
           );
         }
+        if (oldVersion < 6) {
+          await db.execute(
+            'ALTER TABLE listings ADD COLUMN zoning_status TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE listings ADD COLUMN road_frontage TEXT',
+          );
+          await db.execute('ALTER TABLE listings ADD COLUMN deed_status TEXT');
+          await db.execute('ALTER TABLE listings ADD COLUMN utilities TEXT');
+          await _createSettingsTable(db);
+        }
       },
     );
     return _database!;
+  }
+
+  static Future<void> _createSettingsTable(DatabaseExecutor db) {
+    return db.execute('''
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  agency_name TEXT NOT NULL DEFAULT '',
+  agent_name TEXT NOT NULL DEFAULT '',
+  agent_phone TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+)
+''');
+  }
+
+  Future<AppSettings> getAppSettings() async {
+    final db = await database;
+    final rows = await db.query(
+      'app_settings',
+      where: 'id = ?',
+      whereArgs: [1],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return const AppSettings();
+    }
+    return AppSettings.fromMap(rows.first);
+  }
+
+  Future<void> saveAppSettings(AppSettings settings) async {
+    final db = await database;
+    await db.insert(
+      'app_settings',
+      settings.copyWith(updatedAt: DateTime.now()).toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<PropertyListing>> getActiveListings() {

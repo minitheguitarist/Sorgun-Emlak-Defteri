@@ -12,6 +12,7 @@ import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
 import '../widgets/listing_card.dart';
+import 'advertisement_creator_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   const PropertyDetailScreen({
@@ -134,6 +135,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: _openAdvertisementCreator,
+                    icon: const Icon(Icons.campaign_outlined),
+                    label: const Text('Reklam oluştur'),
+                  ),
+                  const SizedBox(height: 10),
                   FilledButton.tonalIcon(
                     onPressed: () {
                       setState(() => _privateVisible = !_privateVisible);
@@ -247,31 +254,39 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       return;
     }
 
-    final listings = await widget.database.getActiveListings();
-    final nearby = listings
-        .where((item) => item.id != _listing.id && item.hasLocation)
-        .map(
-          (item) => MapEntry(
-            item,
-            _distanceMeters(
-              latitude,
-              longitude,
-              item.latitude!,
-              item.longitude!,
+    final List<MapEntry<PropertyListing, double>> nearby;
+    try {
+      final listings = await widget.database.getActiveListings();
+      nearby = listings
+          .where((item) => item.id != _listing.id && item.hasLocation)
+          .map(
+            (item) => MapEntry(
+              item,
+              _distanceMeters(
+                latitude,
+                longitude,
+                item.latitude!,
+                item.longitude!,
+              ),
             ),
-          ),
-        )
-        .where((entry) => entry.value <= radiusMeters)
-        .toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
+          )
+          .where((entry) => entry.value <= radiusMeters)
+          .toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
+    } catch (_) {
+      if (mounted) {
+        _showSnack('Yakındaki ilanlar yüklenemedi.');
+      }
+      return;
+    }
 
     if (!mounted) {
       return;
     }
-    await showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<PropertyListing>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: nearby.isEmpty
             ? Padding(
                 padding: const EdgeInsets.all(24),
@@ -290,20 +305,33 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     listing: item,
                     trailing: Text('${distance.round()} m'),
                     onTap: () {
-                      final navigator = Navigator.of(this.context);
-                      Navigator.of(context).pop();
-                      navigator.pushReplacement(
-                        MaterialPageRoute<void>(
-                          builder: (context) => PropertyDetailScreen(
-                            database: widget.database,
-                            listing: item,
-                          ),
-                        ),
-                      );
+                      Navigator.of(sheetContext).pop(item);
                     },
                   );
                 },
               ),
+      ),
+    );
+    if (!mounted || selected == null) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PropertyDetailScreen(
+          database: widget.database,
+          listing: selected,
+        ),
+      ),
+    );
+  }
+
+  void _openAdvertisementCreator() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AdvertisementCreatorScreen(
+          database: widget.database,
+          listing: _listing,
+        ),
       ),
     );
   }
@@ -593,6 +621,38 @@ class _PublicInfoGrid extends StatelessWidget {
                 child: _InfoTile(
                   label: 'Cephe',
                   value: listing.frontage!.trim(),
+                ),
+              ),
+            if (listing.zoningStatus?.trim().isNotEmpty == true)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'İmar durumu',
+                  value: listing.zoningStatus!.trim(),
+                ),
+              ),
+            if (listing.roadFrontage?.trim().isNotEmpty == true)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Yola cephe',
+                  value: listing.roadFrontage!.trim(),
+                ),
+              ),
+            if (listing.deedStatus?.trim().isNotEmpty == true)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Tapu durumu',
+                  value: listing.deedStatus!.trim(),
+                ),
+              ),
+            if (listing.utilities?.trim().isNotEmpty == true)
+              SizedBox(
+                width: tileWidth,
+                child: _InfoTile(
+                  label: 'Elektrik / Su',
+                  value: listing.utilities!.trim(),
                 ),
               ),
           ],
