@@ -109,7 +109,10 @@ class ListingCard extends StatelessWidget {
                               [
                                 if (listing.squareMeters != null &&
                                     listing.squareMeters! > 0)
-                                  formatArea(listing.squareMeters!),
+                                  formatLandArea(
+                                    listing.squareMeters!,
+                                    listing.areaUnit ?? AreaUnit.squareMeter,
+                                  ),
                                 if (listing.parcelLine.isNotEmpty)
                                   listing.parcelLine,
                               ].join(' • '),

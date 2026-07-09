@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6
+
+- Yakindaki ilanlarda 1 km seceneginin acilmama hatasi duzeltildi.
+- Daire reklam taslagi 1'deki bina yasi bayragi kaldirildi.
+- Reklam taslaklarinda uzun satilik/ofis/telefon metinleri alana sigacak sekilde dinamik kucultuldu.
+- Arsa ve tarla alan girisine metrekare/donum secimi eklendi; filtre ve reklam ciktisi secilen birimi kullanir.
+
 ## 1.0.5
 
 - Daire, arsa ve tarla ilanlari icin galeriye kaydedilebilir reklam gorseli olusturma ekrani.

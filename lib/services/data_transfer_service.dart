@@ -50,7 +50,7 @@ class DataTransferService {
         jsonEncode({
           'format': 'sorgun-emlak-defteri',
           'schemaVersion': 1,
-          'databaseVersion': 6,
+          'databaseVersion': 7,
           'exportedAt': DateTime.now().toIso8601String(),
           'listingCount': exportListings.length,
           'photoCount': photoIndex,
@@ -226,6 +226,7 @@ const _listingColumns = {
   'parcel_no',
   'room_layout',
   'square_meters',
+  'area_unit',
   'building_age',
   'bathroom_count',
   'balcony_count',

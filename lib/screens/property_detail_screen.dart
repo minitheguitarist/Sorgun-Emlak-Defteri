@@ -230,12 +230,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ListTile(
               leading: const Icon(Icons.near_me_outlined),
               title: const Text('500 metre içindeki ilanlar'),
-              onTap: () => Navigator.of(context).pop(500),
+              onTap: () => Navigator.of(context).pop(500.0),
             ),
             ListTile(
               leading: const Icon(Icons.explore_outlined),
               title: const Text('1 km içindeki ilanlar'),
-              onTap: () => Navigator.of(context).pop(1000),
+              onTap: () => Navigator.of(context).pop(1000.0),
             ),
           ],
         ),
@@ -563,8 +563,15 @@ class _PublicInfoGrid extends StatelessWidget {
               SizedBox(
                 width: tileWidth,
                 child: _InfoTile(
-                  label: 'Metrekare',
-                  value: formatArea(listing.squareMeters!),
+                  label: listing.type == PropertyType.apartment
+                      ? 'Metrekare'
+                      : 'Alan',
+                  value: listing.type == PropertyType.apartment
+                      ? formatArea(listing.squareMeters!)
+                      : formatLandArea(
+                          listing.squareMeters!,
+                          listing.areaUnit ?? AreaUnit.squareMeter,
+                        ),
                 ),
               ),
             if (listing.buildingAge != null)

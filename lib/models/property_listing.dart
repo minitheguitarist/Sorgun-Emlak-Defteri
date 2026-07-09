@@ -15,6 +15,7 @@ class PropertyListing {
     this.parcelNo,
     this.roomLayout,
     this.squareMeters,
+    this.areaUnit,
     this.buildingAge,
     this.bathroomCount,
     this.balconyCount,
@@ -53,6 +54,7 @@ class PropertyListing {
   final String? parcelNo;
   final String? roomLayout;
   final double? squareMeters;
+  final AreaUnit? areaUnit;
   final int? buildingAge;
   final int? bathroomCount;
   final int? balconyCount;
@@ -175,6 +177,7 @@ class PropertyListing {
     String? parcelNo,
     String? roomLayout,
     double? squareMeters,
+    AreaUnit? areaUnit,
     int? buildingAge,
     int? bathroomCount,
     int? balconyCount,
@@ -213,6 +216,7 @@ class PropertyListing {
       parcelNo: parcelNo ?? this.parcelNo,
       roomLayout: roomLayout ?? this.roomLayout,
       squareMeters: squareMeters ?? this.squareMeters,
+      areaUnit: areaUnit ?? this.areaUnit,
       buildingAge: buildingAge ?? this.buildingAge,
       bathroomCount: bathroomCount ?? this.bathroomCount,
       balconyCount: balconyCount ?? this.balconyCount,
@@ -254,6 +258,7 @@ class PropertyListing {
       'parcel_no': parcelNo,
       'room_layout': roomLayout,
       'square_meters': squareMeters,
+      'area_unit': areaUnit?.name,
       'building_age': buildingAge,
       'bathroom_count': bathroomCount,
       'balcony_count': balconyCount,
@@ -304,6 +309,7 @@ class PropertyListing {
       parcelNo: map['parcel_no'] as String?,
       roomLayout: map['room_layout'] as String?,
       squareMeters: (map['square_meters'] as num?)?.toDouble(),
+      areaUnit: AreaUnit.fromStorage(map['area_unit'] as String?),
       buildingAge: (map['building_age'] as num?)?.toInt(),
       bathroomCount: (map['bathroom_count'] as num?)?.toInt(),
       balconyCount: (map['balcony_count'] as num?)?.toInt(),

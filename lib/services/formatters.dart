@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../models/property_type.dart';
+
 final _moneyFormatter = NumberFormat.currency(
   locale: 'tr_TR',
   symbol: 'TL',
@@ -17,6 +19,12 @@ String formatDate(DateTime value) => _dateFormatter.format(value);
 String formatArea(num value) {
   final decimalDigits = value % 1 == 0 ? 0 : 1;
   return '${value.toStringAsFixed(decimalDigits)} m²';
+}
+
+String formatLandArea(num squareMeters, AreaUnit unit) {
+  final value = unit.fromSquareMeters(squareMeters);
+  final decimalDigits = value % 1 == 0 ? 0 : 2;
+  return '${value.toStringAsFixed(decimalDigits)} ${unit.suffix}';
 }
 
 double parseMoneyInput(String value) {

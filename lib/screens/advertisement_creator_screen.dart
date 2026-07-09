@@ -519,7 +519,7 @@ class _ApartmentClassicAd extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          _ScaleDownText(
                             _dealLabel(listing),
                             style: const TextStyle(
                               color: _gold,
@@ -529,7 +529,7 @@ class _ApartmentClassicAd extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          _ScaleDownText(
                             _apartmentRoom(listing),
                             style: const TextStyle(
                               color: Colors.white,
@@ -538,7 +538,7 @@ class _ApartmentClassicAd extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          const Text(
+                          const _ScaleDownText(
                             'DAİRE',
                             style: TextStyle(
                               color: Colors.white,
@@ -555,10 +555,8 @@ class _ApartmentClassicAd extends StatelessWidget {
                             const SizedBox(height: 9),
                           ],
                           const Spacer(),
-                          Text(
+                          _ScaleDownText(
                             settings.agencyName.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: _gold,
                               fontSize: 12,
@@ -572,22 +570,11 @@ class _ApartmentClassicAd extends StatelessWidget {
                   const SizedBox(width: 4),
                   Expanded(
                     flex: 68,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _AdPhoto(
-                            path: _slot(photoSlots, 0),
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => onPickSlot(0),
-                            showEditBadge: showEditBadges,
-                          ),
-                        ),
-                        Positioned(
-                          right: 16,
-                          top: 0,
-                          child: _Ribbon(listing: listing),
-                        ),
-                      ],
+                    child: _AdPhoto(
+                      path: _slot(photoSlots, 0),
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => onPickSlot(0),
+                      showEditBadge: showEditBadges,
                     ),
                   ),
                 ],
@@ -684,10 +671,8 @@ class _ApartmentLightAd extends StatelessWidget {
                     children: [
                       const Icon(Icons.home_outlined, color: _gold, size: 28),
                       const SizedBox(height: 4),
-                      Text(
+                      _ScaleDownText(
                         '${_dealLabel(listing)} ${_apartmentRoom(listing)} DAİRE',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFF2B2D31),
                           fontSize: 25,
@@ -744,9 +729,9 @@ class _ApartmentLightAd extends StatelessWidget {
                             color: _gold,
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: const Text(
+                          child: const _ScaleDownText(
                             'DIŞ CEPHE',
-                            textAlign: TextAlign.center,
+                            alignment: Alignment.center,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 9,
@@ -893,7 +878,10 @@ class _LandFieldAd extends StatelessWidget {
                           border: Border.all(color: Colors.white, width: 1.2),
                         ),
                         child: Text(
-                          formatArea(listing.squareMeters!),
+                          formatLandArea(
+                            listing.squareMeters!,
+                            listing.areaUnit ?? AreaUnit.squareMeter,
+                          ),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 19,
@@ -1064,9 +1052,9 @@ class _LabeledPhoto extends StatelessWidget {
                 bottom: Radius.circular(8),
               ),
             ),
-            child: Text(
+            child: _ScaleDownText(
               label,
-              textAlign: TextAlign.center,
+              alignment: Alignment.center,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,
@@ -1196,65 +1184,6 @@ class _InfoPanel extends StatelessWidget {
   }
 }
 
-class _Ribbon extends StatelessWidget {
-  const _Ribbon({required this.listing});
-
-  final PropertyListing listing;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = listing.buildingAge == null
-        ? listing.housingKind?.label ?? listing.placeName
-        : 'Bina yaşı\n${listing.buildingAge}';
-    return ClipPath(
-      clipper: _RibbonClipper(),
-      child: Container(
-        width: 62,
-        height: 86,
-        padding: const EdgeInsets.fromLTRB(8, 12, 8, 18),
-        color: _gold,
-        child: Column(
-          children: [
-            const Icon(Icons.home_outlined, color: _dark, size: 22),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Center(
-                child: Text(
-                  label.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _dark,
-                    fontSize: 9,
-                    height: 1.05,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RibbonClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(size.width / 2, size.height - 16)
-      ..lineTo(0, size.height)
-      ..close();
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}
-
 class _Footer extends StatelessWidget {
   const _Footer({
     required this.settings,
@@ -1283,10 +1212,8 @@ class _Footer extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const _ScaleDownText(
                   'DETAYLI BİLGİ İÇİN',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: _gold,
                     fontSize: 11,
@@ -1294,10 +1221,8 @@ class _Footer extends StatelessWidget {
                     letterSpacing: 1,
                   ),
                 ),
-                Text(
+                _ScaleDownText(
                   settings.agentPhone,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: foreground,
                     fontSize: 24,
@@ -1308,14 +1233,16 @@ class _Footer extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            settings.agencyName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+          SizedBox(
+            width: 76,
+            child: _ScaleDownText(
+              settings.agencyName,
+              alignment: Alignment.centerRight,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -1355,7 +1282,10 @@ List<_AdSpec> _apartmentSpecs(PropertyListing listing) {
       _AdSpec(
         icon: Icons.square_foot_outlined,
         label: 'Brüt',
-        value: formatArea(listing.squareMeters!),
+        value: formatLandArea(
+          listing.squareMeters!,
+          listing.areaUnit ?? AreaUnit.squareMeter,
+        ),
       ),
     );
   }
@@ -1452,7 +1382,10 @@ List<_AdInfo> _landInfo(PropertyListing listing) {
       _AdInfo(
         icon: Icons.square_foot_outlined,
         label: 'Alan',
-        value: formatArea(listing.squareMeters!),
+        value: formatLandArea(
+          listing.squareMeters!,
+          listing.areaUnit ?? AreaUnit.squareMeter,
+        ),
       ),
     );
   }
@@ -1520,6 +1453,35 @@ String _shortLine(PropertyListing listing) {
     listing.placeName,
     if (listing.streetName.trim().isNotEmpty) listing.streetName.trim(),
   ].join(' / ');
+}
+
+class _ScaleDownText extends StatelessWidget {
+  const _ScaleDownText(
+    this.text, {
+    required this.style,
+    this.alignment = Alignment.centerLeft,
+  });
+
+  final String text;
+  final TextStyle style;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: alignment,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          style: style,
+        ),
+      ),
+    );
+  }
 }
 
 const _dark = Color(0xFF061923);

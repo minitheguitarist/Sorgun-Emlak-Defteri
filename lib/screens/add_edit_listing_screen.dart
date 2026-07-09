@@ -63,6 +63,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   late final TextEditingController _roadFrontageController;
   late final TextEditingController _deedStatusController;
   late final TextEditingController _utilitiesController;
+  late AreaUnit _landAreaUnit;
   late HousingKind? _housingKind;
   late final TextEditingController _ownerNameController;
   late final TextEditingController _ownerPhoneController;
@@ -95,11 +96,14 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     _blockController = TextEditingController(text: listing?.blockNo);
     _parcelController = TextEditingController(text: listing?.parcelNo);
     _roomLayoutController = TextEditingController(text: listing?.roomLayout);
+    _landAreaUnit = listing?.areaUnit ?? AreaUnit.squareMeter;
     _squareMetersController = TextEditingController(
       text: listing?.squareMeters == null
           ? ''
-          : listing!.squareMeters!.toStringAsFixed(
-              listing.squareMeters! % 1 == 0 ? 0 : 1,
+          : _formatNumber(
+              listing!.type == PropertyType.apartment
+                  ? listing.squareMeters!
+                  : _landAreaUnit.fromSquareMeters(listing.squareMeters!),
             ),
     );
     _buildingAgeController = TextEditingController(
@@ -569,6 +573,21 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
+                          SegmentedButton<AreaUnit>(
+                            segments: AreaUnit.values
+                                .map(
+                                  (unit) => ButtonSegment<AreaUnit>(
+                                    value: unit,
+                                    label: Text(unit.label),
+                                  ),
+                                )
+                                .toList(),
+                            selected: {_landAreaUnit},
+                            onSelectionChanged: (value) {
+                              _changeLandAreaUnit(value.first);
+                            },
+                          ),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               Expanded(
@@ -578,13 +597,14 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                                       const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Alan',
-                                    suffixText: 'm²',
-                                    prefixIcon:
-                                        Icon(Icons.square_foot_outlined),
+                                    suffixText: _landAreaUnit.suffix,
+                                    prefixIcon: const Icon(
+                                      Icons.square_foot_outlined,
+                                    ),
                                   ),
-                                  validator: _optionalAreaValidator,
+                                  validator: _areaValidator,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -763,6 +783,17 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     return parseOptionalNumberInput(raw) == null ? 'Geçerli m² girin.' : null;
   }
 
+  String? _areaValidator(String? value) {
+    final raw = (value ?? '').trim();
+    if (_type != PropertyType.apartment && raw.isEmpty) {
+      return 'Alan girin.';
+    }
+    if (raw.isEmpty) {
+      return null;
+    }
+    return parseOptionalNumberInput(raw) == null ? 'Geçerli alan girin.' : null;
+  }
+
   String? _optionalIntValidator(String? value) {
     final raw = (value ?? '').trim();
     if (raw.isEmpty) {
@@ -789,6 +820,22 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
       }
     }
     return phones;
+  }
+
+  void _changeLandAreaUnit(AreaUnit unit) {
+    if (unit == _landAreaUnit) {
+      return;
+    }
+    final currentValue = parseOptionalNumberInput(_squareMetersController.text);
+    setState(() {
+      if (currentValue != null) {
+        final squareMeters = _landAreaUnit.toSquareMeters(currentValue);
+        _squareMetersController.text = _formatNumber(
+          unit.fromSquareMeters(squareMeters),
+        );
+      }
+      _landAreaUnit = unit;
+    });
   }
 
   Future<void> _pickGallery() async {
@@ -878,7 +925,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         roomLayout: _type == PropertyType.apartment
             ? _roomLayoutController.text.trim()
             : null,
-        squareMeters: parseOptionalNumberInput(_squareMetersController.text),
+        squareMeters: _type == PropertyType.apartment
+            ? parseOptionalNumberInput(_squareMetersController.text)
+            : _landAreaInputToSquareMeters(),
+        areaUnit: _type == PropertyType.apartment ? null : _landAreaUnit,
         buildingAge: _type == PropertyType.apartment
             ? _parseOptionalInt(_buildingAgeController.text)
             : null,
@@ -1052,6 +1102,19 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   String? _emptyToNull(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  double? _landAreaInputToSquareMeters() {
+    final value = parseOptionalNumberInput(_squareMetersController.text);
+    if (value == null) {
+      return null;
+    }
+    return _landAreaUnit.toSquareMeters(value);
+  }
+
+  static String _formatNumber(num value) {
+    final decimalDigits = value % 1 == 0 ? 0 : 2;
+    return value.toStringAsFixed(decimalDigits);
   }
 }
 

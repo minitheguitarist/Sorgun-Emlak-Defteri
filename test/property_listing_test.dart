@@ -167,6 +167,7 @@ void main() {
       blockNo: '123',
       parcelNo: '45',
       squareMeters: 2450,
+      areaUnit: AreaUnit.squareMeter,
       zoningStatus: 'Konut',
       roadFrontage: 'Var',
       deedStatus: 'Müstakil',
@@ -182,9 +183,36 @@ void main() {
     final restored = PropertyListing.fromMap(listing.toMap());
 
     expect(restored.squareMeters, 2450);
+    expect(restored.areaUnit, AreaUnit.squareMeter);
     expect(restored.zoningStatus, 'Konut');
     expect(restored.roadFrontage, 'Var');
     expect(restored.deedStatus, 'Müstakil');
     expect(restored.utilities, 'Yakın');
+  });
+
+  test('arsa tarla alan birimi map icinde korunur', () {
+    final now = DateTime(2026, 1, 1);
+    final listing = PropertyListing(
+      type: PropertyType.field,
+      dealType: DealType.sale,
+      placeKind: PlaceKind.village,
+      placeName: 'Alisar Koyu',
+      streetName: '',
+      blockNo: '12',
+      parcelNo: '8',
+      squareMeters: AreaUnit.decare.toSquareMeters(5),
+      areaUnit: AreaUnit.decare,
+      costPrice: 2000,
+      salePrice: 2500,
+      description: '',
+      photoPaths: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final restored = PropertyListing.fromMap(listing.toMap());
+
+    expect(restored.squareMeters, 5000);
+    expect(restored.areaUnit, AreaUnit.decare);
   });
 }

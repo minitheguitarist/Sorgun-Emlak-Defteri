@@ -53,6 +53,7 @@ class _ListingScreenState extends State<ListingScreen> {
   String? _placeName;
   String? _streetName;
   HousingKind? _housingKind;
+  AreaUnit _areaFilterUnit = AreaUnit.squareMeter;
   final _searchController = TextEditingController();
   final _blockController = TextEditingController();
   final _parcelController = TextEditingController();
@@ -215,10 +216,8 @@ class _ListingScreenState extends State<ListingScreen> {
     final parcel = _parcelController.text.trim().toLowerCase();
     final roomLayout = _roomLayoutController.text.trim().toLowerCase();
     final frontage = _frontageController.text;
-    final minSquareMeters =
-        parseOptionalNumberInput(_minSquareMetersController.text);
-    final maxSquareMeters =
-        parseOptionalNumberInput(_maxSquareMetersController.text);
+    final minSquareMeters = _parseFilterArea(_minSquareMetersController.text);
+    final maxSquareMeters = _parseFilterArea(_maxSquareMetersController.text);
     final maxBuildingAge = _parseOptionalInt(_maxBuildingAgeController.text);
     final minBathroomCount = _parseOptionalInt(_minBathroomController.text);
     final minBalconyCount = _parseOptionalInt(_minBalconyController.text);
@@ -378,6 +377,7 @@ class _ListingScreenState extends State<ListingScreen> {
       _placeName = null;
       _streetName = null;
       _housingKind = null;
+      _areaFilterUnit = AreaUnit.squareMeter;
       _searchController.clear();
       _searchOpen = false;
       _blockController.clear();
@@ -405,6 +405,7 @@ class _ListingScreenState extends State<ListingScreen> {
     var placeName = _placeName;
     var streetName = _streetName;
     var housingKind = _housingKind;
+    var areaFilterUnit = _areaFilterUnit;
     final blockController = TextEditingController(text: _blockController.text);
     final parcelController =
         TextEditingController(text: _parcelController.text);
@@ -482,10 +483,9 @@ class _ListingScreenState extends State<ListingScreen> {
                             if (type == PropertyType.apartment) {
                               blockController.clear();
                               parcelController.clear();
+                              areaFilterUnit = AreaUnit.squareMeter;
                             } else {
                               roomLayoutController.clear();
-                              minSquareMetersController.clear();
-                              maxSquareMetersController.clear();
                               maxBuildingAgeController.clear();
                               minBathroomController.clear();
                               minBalconyController.clear();
@@ -672,6 +672,53 @@ class _ListingScreenState extends State<ListingScreen> {
                       if (type == PropertyType.land ||
                           type == PropertyType.field) ...[
                         const SizedBox(height: 12),
+                        SegmentedButton<AreaUnit>(
+                          segments: AreaUnit.values
+                              .map(
+                                (unit) => ButtonSegment<AreaUnit>(
+                                  value: unit,
+                                  label: Text(unit.label),
+                                ),
+                              )
+                              .toList(),
+                          selected: {areaFilterUnit},
+                          onSelectionChanged: (value) {
+                            setSheetState(() => areaFilterUnit = value.first);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: minSquareMetersController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText:
+                                      'Min alan (${areaFilterUnit.suffix})',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: maxSquareMetersController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText:
+                                      'Max alan (${areaFilterUnit.suffix})',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
@@ -707,6 +754,7 @@ class _ListingScreenState extends State<ListingScreen> {
                                   placeName = null;
                                   streetName = null;
                                   housingKind = null;
+                                  areaFilterUnit = AreaUnit.squareMeter;
                                   blockController.clear();
                                   parcelController.clear();
                                   roomLayoutController.clear();
@@ -752,6 +800,7 @@ class _ListingScreenState extends State<ListingScreen> {
         _placeName = placeName;
         _streetName = streetName;
         _housingKind = housingKind;
+        _areaFilterUnit = areaFilterUnit;
         _blockController.text = blockController.text;
         _parcelController.text = parcelController.text;
         _roomLayoutController.text = roomLayoutController.text;
@@ -785,6 +834,17 @@ class _ListingScreenState extends State<ListingScreen> {
       return null;
     }
     return int.tryParse(raw);
+  }
+
+  double? _parseFilterArea(String value) {
+    final parsed = parseOptionalNumberInput(value);
+    if (parsed == null) {
+      return null;
+    }
+    if (_type == PropertyType.land || _type == PropertyType.field) {
+      return _areaFilterUnit.toSquareMeters(parsed);
+    }
+    return parsed;
   }
 }
 

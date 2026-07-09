@@ -102,3 +102,54 @@ enum HousingKind {
     );
   }
 }
+
+enum AreaUnit {
+  squareMeter,
+  decare;
+
+  String get label {
+    switch (this) {
+      case AreaUnit.squareMeter:
+        return 'Metrekare';
+      case AreaUnit.decare:
+        return 'Dönüm';
+    }
+  }
+
+  String get suffix {
+    switch (this) {
+      case AreaUnit.squareMeter:
+        return 'm²';
+      case AreaUnit.decare:
+        return 'dönüm';
+    }
+  }
+
+  double toSquareMeters(double value) {
+    switch (this) {
+      case AreaUnit.squareMeter:
+        return value;
+      case AreaUnit.decare:
+        return value * 1000;
+    }
+  }
+
+  double fromSquareMeters(num value) {
+    switch (this) {
+      case AreaUnit.squareMeter:
+        return value.toDouble();
+      case AreaUnit.decare:
+        return value / 1000;
+    }
+  }
+
+  static AreaUnit fromStorage(String? value) {
+    if (value == null) {
+      return AreaUnit.squareMeter;
+    }
+    return AreaUnit.values.firstWhere(
+      (unit) => unit.name == value,
+      orElse: () => AreaUnit.squareMeter,
+    );
+  }
+}
