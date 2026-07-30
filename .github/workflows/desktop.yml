@@ -58,6 +58,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Trust container-mounted Flutter SDK
+        run: git config --global --add safe.directory "$FLUTTER_ROOT"
+
       - name: Build Linux release
         run: |
           flutter pub get
