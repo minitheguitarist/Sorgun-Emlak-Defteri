@@ -11,6 +11,8 @@ import '../models/property_type.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../services/gallery_saver_service.dart';
+import '../services/platform_capabilities.dart';
+import '../widgets/platform_locked_action.dart';
 import '../services/photo_service.dart';
 import 'settings_screen.dart';
 
@@ -203,17 +205,23 @@ class _AdvertisementCreatorScreenState
                       ),
                 ),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed:
-                    _saving || !_hasMainPhoto ? null : () => _save(settings),
-                icon: _saving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.photo_library_outlined),
-                label: const Text('Galeriye kaydet'),
-              ),
+              if (PlatformCapabilitiesScope.current.supportsGallerySave)
+                FilledButton.icon(
+                  onPressed:
+                      _saving || !_hasMainPhoto ? null : () => _save(settings),
+                  icon: _saving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.photo_library_outlined),
+                  label: const Text('Galeriye kaydet'),
+                )
+              else
+                const PlatformLockedAction(
+                  label: 'Galeriye kaydet',
+                  expanded: true,
+                ),
             ],
           );
         },

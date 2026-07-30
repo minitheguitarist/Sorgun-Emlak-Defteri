@@ -9,6 +9,7 @@ import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/responsive_width.dart';
 import '../widgets/search_selection_field.dart';
 import 'property_detail_screen.dart';
 
@@ -178,24 +179,40 @@ class _ListingScreenState extends State<ListingScreen> {
                     );
                   }
 
-                  return RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: listings.length,
-                      itemBuilder: (context, index) {
-                        final listing = listings[index];
-                        return AnimatedPadding(
-                          duration: Duration(milliseconds: 150 + index * 18),
-                          curve: Curves.easeOutCubic,
-                          padding: EdgeInsets.zero,
-                          child: ListingCard(
-                            listing: listing,
-                            interestCount: data.interestCounts[listing.id] ?? 0,
-                            onTap: () => _openListing(listing),
-                          ),
-                        );
-                      },
+                  return ResponsiveWidth(
+                    child: RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns = constraints.maxWidth >= 1100 ? 2 : 1;
+                          return GridView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisExtent: 164,
+                              crossAxisSpacing: 4,
+                            ),
+                            itemCount: listings.length,
+                            itemBuilder: (context, index) {
+                              final listing = listings[index];
+                              return AnimatedPadding(
+                                duration:
+                                    Duration(milliseconds: 150 + index * 18),
+                                curve: Curves.easeOutCubic,
+                                padding: EdgeInsets.zero,
+                                child: ListingCard(
+                                  listing: listing,
+                                  interestCount:
+                                      data.interestCounts[listing.id] ?? 0,
+                                  onTap: () => _openListing(listing),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
                   );
                 },

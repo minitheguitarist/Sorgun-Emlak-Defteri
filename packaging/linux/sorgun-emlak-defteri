@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/libexec/sorgun-emlak-defteri/sorgun_emlak_defteri "$@"

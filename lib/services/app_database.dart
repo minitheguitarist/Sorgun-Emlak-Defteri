@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart' as mobile_db;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as desktop_db;
 
 import '../models/customer.dart';
 import '../models/price_history.dart';
@@ -7,16 +11,20 @@ import '../models/app_settings.dart';
 import '../models/property_listing.dart';
 
 class AppDatabase {
-  Database? _database;
+  AppDatabase({this.databasePath});
 
-  Future<Database> get database async {
+  final String? databasePath;
+  mobile_db.Database? _database;
+
+  Future<mobile_db.Database> get database async {
     if (_database != null) {
       return _database!;
     }
 
-    final basePath = await getDatabasesPath();
-    final dbPath = p.join(basePath, 'sorgun_emlak_defteri.db');
-    _database = await openDatabase(
+    _initializeDatabaseFactory();
+    final dbPath = databasePath ?? await _defaultDatabasePath();
+    await Directory(p.dirname(dbPath)).create(recursive: true);
+    _database = await mobile_db.openDatabase(
       dbPath,
       version: 8,
       onCreate: (db, version) async {
@@ -156,7 +164,32 @@ CREATE TABLE price_history (
     return _database!;
   }
 
-  static Future<void> _createSettingsTable(DatabaseExecutor db) {
+  static bool _desktopFactoryInitialized = false;
+
+  static bool get _usesDesktopDatabase =>
+      Platform.isLinux || Platform.isWindows;
+
+  static void _initializeDatabaseFactory() {
+    if (!_usesDesktopDatabase || _desktopFactoryInitialized) {
+      return;
+    }
+    desktop_db.sqfliteFfiInit();
+    mobile_db.databaseFactory = desktop_db.databaseFactoryFfi;
+    _desktopFactoryInitialized = true;
+  }
+
+  static Future<String> _defaultDatabasePath() async {
+    if (!_usesDesktopDatabase) {
+      final basePath = await mobile_db.getDatabasesPath();
+      return p.join(basePath, 'sorgun_emlak_defteri.db');
+    }
+    final supportDirectory = await getApplicationSupportDirectory();
+    final directory = Directory(p.join(supportDirectory.path, 'databases'));
+    await directory.create(recursive: true);
+    return p.join(directory.path, 'sorgun_emlak_defteri.db');
+  }
+
+  static Future<void> _createSettingsTable(mobile_db.DatabaseExecutor db) {
     return db.execute('''
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -168,7 +201,9 @@ CREATE TABLE IF NOT EXISTS app_settings (
 ''');
   }
 
-  static Future<void> _createCustomerTables(DatabaseExecutor db) async {
+  static Future<void> _createCustomerTables(
+    mobile_db.DatabaseExecutor db,
+  ) async {
     await db.execute('''
 CREATE TABLE IF NOT EXISTS customers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,7 +252,7 @@ CREATE TABLE IF NOT EXISTS listing_interests (
     await db.insert(
       'app_settings',
       settings.copyWith(updatedAt: DateTime.now()).toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      conflictAlgorithm: mobile_db.ConflictAlgorithm.replace,
     );
   }
 

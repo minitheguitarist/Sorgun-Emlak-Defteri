@@ -135,7 +135,16 @@ enum AppSection {
 }
 
 class AppHome extends StatefulWidget {
-  const AppHome({super.key});
+  const AppHome({
+    super.key,
+    this.database,
+    this.addressRepository,
+    this.photoService,
+  });
+
+  final AppDatabase? database;
+  final AddressRepository? addressRepository;
+  final PhotoService? photoService;
 
   @override
   State<AppHome> createState() => _AppHomeState();
@@ -151,13 +160,15 @@ class _AppHomeState extends State<AppHome> {
   @override
   void initState() {
     super.initState();
-    _database = AppDatabase();
-    _addressRepository = AddressRepository();
-    _photoService = PhotoService();
+    _database = widget.database ?? AppDatabase();
+    _addressRepository = widget.addressRepository ?? AddressRepository();
+    _photoService = widget.photoService ?? PhotoService();
   }
 
-  void _openSection(AppSection section) {
-    Navigator.of(context).pop();
+  void _openSection(AppSection section, {bool closeDrawer = false}) {
+    if (closeDrawer) {
+      Navigator.of(context).pop();
+    }
     setState(() => _section = section);
   }
 
@@ -167,7 +178,34 @@ class _AppHomeState extends State<AppHome> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final showDesktopNavigation = width >= 960;
+    final sectionBody = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.02, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(
+        key: ValueKey('${_section.name}-$_refreshNonce'),
+        child: _buildSection(),
+      ),
+    );
+
     return Scaffold(
+      key: Key(
+        showDesktopNavigation ? 'desktop-app-layout' : 'mobile-app-layout',
+      ),
       appBar: AppBar(
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
@@ -177,47 +215,61 @@ class _AppHomeState extends State<AppHome> {
           ),
         ),
       ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-                child: _DrawerHeader(current: _section),
-              ),
-              const Divider(height: 1),
-              for (final section in AppSection.values)
-                ListTile(
-                  selected: section == _section,
-                  leading: Icon(section.icon),
-                  title: Text(section.title),
-                  onTap: () => _openSection(section),
+      drawer: showDesktopNavigation
+          ? null
+          : Drawer(
+              key: const Key('app-navigation-drawer'),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+                      child: _DrawerHeader(current: _section),
+                    ),
+                    const Divider(height: 1),
+                    for (final section in AppSection.values)
+                      ListTile(
+                        selected: section == _section,
+                        leading: Icon(section.icon),
+                        title: Text(section.title),
+                        onTap: () => _openSection(section, closeDrawer: true),
+                      ),
+                  ],
                 ),
-            ],
-          ),
-        ),
-      ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.02, 0),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
+              ),
             ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey('${_section.name}-$_refreshNonce'),
-          child: _buildSection(),
-        ),
-      ),
+      body: showDesktopNavigation
+          ? Row(
+              children: [
+                NavigationRail(
+                  key: const Key('app-navigation-rail'),
+                  extended: width >= 1180,
+                  minExtendedWidth: 218,
+                  selectedIndex: AppSection.values.indexOf(_section),
+                  onDestinationSelected: (index) =>
+                      _openSection(AppSection.values[index]),
+                  leading: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Icon(
+                      Icons.home_work_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 32,
+                    ),
+                  ),
+                  destinations: [
+                    for (final section in AppSection.values)
+                      NavigationRailDestination(
+                        icon: Icon(section.icon),
+                        selectedIcon: Icon(section.icon),
+                        label: Text(section.title),
+                      ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: sectionBody),
+              ],
+            )
+          : sectionBody,
       floatingActionButton: _section == AppSection.listings
           ? FloatingActionButton.extended(
               onPressed: () => setState(() => _section = AppSection.add),

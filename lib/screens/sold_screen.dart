@@ -4,6 +4,7 @@ import '../models/property_listing.dart';
 import '../services/app_database.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/responsive_width.dart';
 import 'property_detail_screen.dart';
 
 class SoldScreen extends StatefulWidget {
@@ -69,31 +70,45 @@ class _SoldScreenState extends State<SoldScreen> {
                 'Düzenleme ekranından satıldı işaretlenen ilanlar burada satış fiyatıyla görünür.',
           );
         }
-        return RefreshIndicator(
-          onRefresh: _refresh,
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: listings.length,
-            itemBuilder: (context, index) {
-              final listing = listings[index];
-              return ListingCard(
-                listing: listing,
-                showSoldPrice: true,
-                interestCount: data.interestCounts[listing.id] ?? 0,
-                trailing: const Icon(Icons.check_circle_outline, size: 20),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => PropertyDetailScreen(
-                        database: widget.database,
-                        listing: listing,
-                        soldView: true,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+        return ResponsiveWidth(
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 1100 ? 2 : 1;
+                return GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisExtent: 164,
+                    crossAxisSpacing: 4,
+                  ),
+                  itemCount: listings.length,
+                  itemBuilder: (context, index) {
+                    final listing = listings[index];
+                    return ListingCard(
+                      listing: listing,
+                      showSoldPrice: true,
+                      interestCount: data.interestCounts[listing.id] ?? 0,
+                      trailing:
+                          const Icon(Icons.check_circle_outline, size: 20),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => PropertyDetailScreen(
+                              database: widget.database,
+                              listing: listing,
+                              soldView: true,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
         );
       },

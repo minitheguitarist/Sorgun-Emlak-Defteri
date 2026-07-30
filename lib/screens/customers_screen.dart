@@ -9,8 +9,11 @@ import '../services/address_repository.dart';
 import '../services/app_database.dart';
 import '../services/contact_picker_service.dart';
 import '../services/formatters.dart';
+import '../services/platform_capabilities.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/responsive_width.dart';
+import '../widgets/platform_locked_action.dart';
 import '../widgets/search_selection_field.dart';
 import 'property_detail_screen.dart';
 
@@ -64,93 +67,96 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: 'Müşteri ara',
-                    prefixIcon: Icon(Icons.search),
+    return ResponsiveWidth(
+      maxWidth: 1000,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Müşteri ara',
+                      prefixIcon: Icon(Icons.search),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              IconButton.filled(
-                tooltip: 'Yeni müşteri',
-                onPressed: _openNewCustomer,
-                icon: const Icon(Icons.person_add_alt_outlined),
-              ),
-            ],
+                const SizedBox(width: 10),
+                IconButton.filled(
+                  tooltip: 'Yeni müşteri',
+                  onPressed: _openNewCustomer,
+                  icon: const Icon(Icons.person_add_alt_outlined),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: FutureBuilder<List<Customer>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final customers = _filter(snapshot.data ?? const []);
-              if (customers.isEmpty) {
-                return EmptyState(
-                  icon: Icons.people_alt_outlined,
-                  title: 'Müşteri yok',
-                  message: 'Yeni müşteri ekleyerek takip listesi oluşturun.',
-                  action: FilledButton.icon(
-                    onPressed: _openNewCustomer,
-                    icon: const Icon(Icons.person_add_alt_outlined),
-                    label: const Text('Müşteri ekle'),
+          Expanded(
+            child: FutureBuilder<List<Customer>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final customers = _filter(snapshot.data ?? const []);
+                if (customers.isEmpty) {
+                  return EmptyState(
+                    icon: Icons.people_alt_outlined,
+                    title: 'Müşteri yok',
+                    message: 'Yeni müşteri ekleyerek takip listesi oluşturun.',
+                    action: FilledButton.icon(
+                      onPressed: _openNewCustomer,
+                      icon: const Icon(Icons.person_add_alt_outlined),
+                      label: const Text('Müşteri ekle'),
+                    ),
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: customers.length,
+                    itemBuilder: (context, index) {
+                      final customer = customers[index];
+                      final previous =
+                          index == 0 ? null : customers[index - 1].fullName;
+                      final showHeader =
+                          _groupKey(previous) != _groupKey(customer.fullName);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showHeader)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(22, 14, 22, 4),
+                              child: Text(
+                                _groupKey(customer.fullName),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person_outline),
+                            ),
+                            title: Text(customer.fullName),
+                            subtitle: Text(customer.phone),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _openCustomer(customer),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 );
-              }
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: customers.length,
-                  itemBuilder: (context, index) {
-                    final customer = customers[index];
-                    final previous =
-                        index == 0 ? null : customers[index - 1].fullName;
-                    final showHeader =
-                        _groupKey(previous) != _groupKey(customer.fullName);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (showHeader)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(22, 14, 22, 4),
-                            child: Text(
-                              _groupKey(customer.fullName),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                        ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person_outline),
-                          ),
-                          title: Text(customer.fullName),
-                          subtitle: Text(customer.phone),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openCustomer(customer),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            },
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -250,11 +256,17 @@ class _CustomerEditScreenState extends State<CustomerEditScreen> {
           child: ListView(
             padding: const EdgeInsets.all(18),
             children: [
-              OutlinedButton.icon(
-                onPressed: _pickContact,
-                icon: const Icon(Icons.contacts_outlined),
-                label: const Text('Rehberden seç'),
-              ),
+              if (PlatformCapabilitiesScope.current.supportsContactPicker)
+                OutlinedButton.icon(
+                  onPressed: _pickContact,
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: const Text('Rehberden seç'),
+                )
+              else
+                const PlatformLockedAction(
+                  label: 'Rehberden seç',
+                  expanded: true,
+                ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _nameController,
@@ -463,11 +475,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: FilledButton.tonalIcon(
-                            onPressed: () => _call(_customer.phone),
-                            icon: const Icon(Icons.call_outlined),
-                            label: const Text('Ara'),
-                          ),
+                          child: PlatformCapabilitiesScope
+                                  .current.supportsDirectCall
+                              ? FilledButton.tonalIcon(
+                                  onPressed: () => _call(_customer.phone),
+                                  icon: const Icon(Icons.call_outlined),
+                                  label: const Text('Ara'),
+                                )
+                              : const PlatformLockedAction(
+                                  label: 'Ara',
+                                  expanded: true,
+                                ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(

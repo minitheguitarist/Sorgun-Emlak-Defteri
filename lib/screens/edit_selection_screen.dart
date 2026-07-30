@@ -6,6 +6,7 @@ import '../services/app_database.dart';
 import '../services/photo_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/responsive_width.dart';
 import 'add_edit_listing_screen.dart';
 
 enum _EditListingStatus {
@@ -153,37 +154,51 @@ class _EditSelectionScreenState extends State<EditSelectionScreen> {
                   message: _emptyMessage,
                 );
               }
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: listings.length,
-                  itemBuilder: (context, index) {
-                    final listing = listings[index];
-                    return ListingCard(
-                      listing: listing,
-                      interestCount: data.interestCounts[listing.id] ?? 0,
-                      trailing: const Icon(Icons.edit_outlined, size: 20),
-                      onTap: () async {
-                        final changed = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (context) => AddEditListingScreen(
-                              database: widget.database,
-                              addressRepository: widget.addressRepository,
-                              photoService: widget.photoService,
-                              listing: listing,
-                              standalone: true,
-                              onSaved: widget.onChanged,
-                            ),
-                          ),
-                        );
-                        if (changed == true && mounted) {
-                          widget.onChanged();
-                          await _refresh();
-                        }
-                      },
-                    );
-                  },
+              return ResponsiveWidth(
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 1100 ? 2 : 1;
+                      return GridView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          mainAxisExtent: 164,
+                          crossAxisSpacing: 4,
+                        ),
+                        itemCount: listings.length,
+                        itemBuilder: (context, index) {
+                          final listing = listings[index];
+                          return ListingCard(
+                            listing: listing,
+                            interestCount: data.interestCounts[listing.id] ?? 0,
+                            trailing: const Icon(Icons.edit_outlined, size: 20),
+                            onTap: () async {
+                              final changed =
+                                  await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(
+                                  builder: (context) => AddEditListingScreen(
+                                    database: widget.database,
+                                    addressRepository: widget.addressRepository,
+                                    photoService: widget.photoService,
+                                    listing: listing,
+                                    standalone: true,
+                                    onSaved: widget.onChanged,
+                                  ),
+                                ),
+                              );
+                              if (changed == true && mounted) {
+                                widget.onChanged();
+                                await _refresh();
+                              }
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               );
             },

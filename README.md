@@ -1,10 +1,11 @@
 # Sorgun Emlak Defteri
 
-Sorgun Emlak Defteri, Android icin hazirlanan cevrimdisi bir emlak takip uygulamasidir. Daire, arsa ve tarla kayitlari cihazda saklanir; fotoğraflar uygulamanin ozel klasorune kopyalanir; maliyet, satis fiyati, kar ve fiyat gecmisi emlakci tarafinda takip edilir.
+Sorgun Emlak Defteri; Android, Linux ve Windows icin cevrimdisi bir emlak takip uygulamasidir. Daire, arsa ve tarla kayitlari cihazda saklanir; fotograflar uygulamanin ozel klasorune kopyalanir; maliyet, satis fiyati, kar ve fiyat gecmisi emlakci tarafinda takip edilir.
 
 ## Ozellikler
 
-- Hamburger menulu ana ekran: Listeleme, Ekleme, Duzenleme, Musteriler ve Satilanlar.
+- Telefonda hamburger menusu, genis masaustu pencerelerinde kalici yan gezinme cubugu.
+- Genis ekranda iki sutunlu ilan kartlari ve okunabilirligi koruyan sinirli icerik genisligi.
 - Daire, arsa ve tarla icin ayri alanlar.
 - Sorgun/Yozgat mahalle, koy ve cadde/sokak/yol seed verisi.
 - Galeri ve kamera ile coklu fotograf ekleme.
@@ -21,26 +22,45 @@ Sorgun Emlak Defteri, Android icin hazirlanan cevrimdisi bir emlak takip uygulam
 - Fiyat degisikliklerinde otomatik fiyat gecmisi.
 - Satildi akisi: gercek satis fiyati girilir, ilan aktif listeden cikar ve Satilanlar arsivine duser.
 - GitHub Actions ile release APK artifact uretimi.
+- GitHub Actions ile Fedora 44 x86_64 RPM ve Windows x64 kurulum EXE'si uretimi.
+
+## Masaustu Davranisi
+
+Linux ve Windows surumleri mobil veri modelini ve `.sedef` aktarim paketini kullanir. Masaustunde yeni bir taslak kaydetmek icin yalnizca mulk tipi zorunludur; bos sayisal alanlar `0`, secilmemis alanlar bos olarak saklanir. Bu taslak Android v1.0.7'ye aktarilip telefonda tamamlanabilir.
+
+Rehberden kisi secme, kamera, mevcut konumdan adres bulma, telefonla arama, konum paylasma ve reklam gorselini telefon galerisine kaydetme gibi telefona bagli islemler masaustunde kilit simgesiyle gosterilir. Kilit uzerinde bekletildiginde aciklama gorunur. Dosyadan fotograf secme, `.sedef` ice/disa aktarma, haritada kayitli konumu acma ve WhatsApp baglantilari masaustunde kullanilabilir.
 
 ## Gelistirme
 
 Flutter kurulu bir makinede:
 
 ```bash
-flutter create --platforms android --org com.sorgunemlak --project-name sorgun_emlak_defteri .
 flutter pub get
 flutter analyze
 flutter test
-flutter run
+flutter run -d android
+flutter run -d linux
+flutter run -d windows
 ```
 
-Release APK:
+Yerel release build'leri:
 
 ```bash
 flutter build apk --release
+flutter build linux --release
+flutter build windows --release
 ```
 
-GitHub Actions workflow'u her push/pull request icin analiz, test ve release APK build adimlarini calistirir. Debug APK artifact olarak `sorgun-emlak-defteri-debug-apk` adiyla yuklenir. Tag release'lerinde imzali release APK ayrica `sorgun-emlak-defteri-release-apk` artifact'i ve GitHub Release asset'i olarak yayinlanir. GitHub Releases altinda yayinlanan APK'nin telefona kurulabilmesi icin release imzalama secret'lari tanimli olmalidir.
+Fedora 44'te yerel RPM:
+
+```bash
+flutter build linux --release
+./scripts/build-rpm.sh
+```
+
+RPM `build/rpmbuild/RPMS/x86_64/` altinda olusur. Flutter uygulamasi native kod icerdigi icin paket `noarch` degil, `x86_64` olarak uretilir.
+
+GitHub Actions workflow'lari her push/pull request icin analiz ve test calistirir. Android workflow'u APK, Desktop Builds workflow'u Fedora 44 x86_64 RPM ile Windows x64 kurulum EXE'si uretir. Bir tag calismasinda veya `release_tag` girilerek elle baslatildiginda masaustu dosyalari ve SHA-256 dosyalari ilgili GitHub Release'e eklenir.
 
 ## Release Imzalama
 

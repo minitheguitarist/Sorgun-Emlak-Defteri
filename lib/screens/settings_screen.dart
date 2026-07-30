@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/app_settings.dart';
 import '../services/app_database.dart';
+import '../widgets/responsive_width.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -52,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final content = _loading
+    final rawContent = _loading
         ? const Center(child: CircularProgressIndicator())
         : Form(
             key: _formKey,
@@ -118,6 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           );
+    final content = ResponsiveWidth(maxWidth: 800, child: rawContent);
 
     if (!widget.standalone) {
       return content;

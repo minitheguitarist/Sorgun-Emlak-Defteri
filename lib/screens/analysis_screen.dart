@@ -5,6 +5,7 @@ import '../models/property_type.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/responsive_width.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({
@@ -60,20 +61,23 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           );
         }
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
-          children: [
-            _SummaryGrid(data: data),
-            const SizedBox(height: 18),
-            Text(
-              'Bölge özeti',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 10),
-            for (final group in data.groups) _RegionTile(group: group),
-          ],
+        return ResponsiveWidth(
+          maxWidth: 1200,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
+            children: [
+              _SummaryGrid(data: data),
+              const SizedBox(height: 18),
+              Text(
+                'Bölge özeti',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              for (final group in data.groups) _RegionTile(group: group),
+            ],
+          ),
         );
       },
     );

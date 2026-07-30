@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sorgun Emlak Defteri
+Comment=Çevrimdışı emlak ve müşteri takip uygulaması
+Exec=sorgun-emlak-defteri
+Icon=com.sorgunemlak.defter
+Terminal=false
+Categories=Office;Database;
+StartupWMClass=com.sorgunemlak.defter

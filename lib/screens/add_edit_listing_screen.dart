@@ -13,8 +13,11 @@ import '../services/contact_picker_service.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
 import '../services/photo_service.dart';
+import '../services/platform_capabilities.dart';
 import '../services/reverse_geocoding_service.dart';
 import '../widgets/search_selection_field.dart';
+import '../widgets/responsive_width.dart';
+import '../widgets/platform_locked_action.dart';
 import 'location_picker_screen.dart';
 
 class AddEditListingScreen extends StatefulWidget {
@@ -200,7 +203,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         if (addressBook == null) {
           return const Center(child: Text('Adres verisi okunamadı.'));
         }
-        return _buildForm(context, addressBook);
+        return ResponsiveWidth(
+          maxWidth: 1100,
+          child: _buildForm(context, addressBook),
+        );
       },
     );
 
@@ -222,6 +228,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
     final profitPercent = sale <= 0 ? 0 : profit / sale * 100;
     final places = addressBook.placesFor(_placeKind);
     final priceLabel = _dealType?.priceLabel ?? 'Fiyat';
+    final desktop = PlatformCapabilitiesScope.current.isDesktop;
 
     return Form(
       key: _formKey,
@@ -320,7 +327,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
             value: places.contains(_placeName) ? _placeName : null,
             options: places,
             prefixIcon: Icons.place_outlined,
-            requiredMessage: 'Mahalle veya köy seçin.',
+            requiredMessage: desktop ? null : 'Mahalle veya köy seçin.',
             allowClear: false,
             onChanged: (value) => setState(() => _placeName = value),
           ),
@@ -382,6 +389,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                               prefixIcon: Icon(Icons.apartment_outlined),
                             ),
                             validator: (value) {
+                              if (desktop) {
+                                return null;
+                              }
                               if (_type != PropertyType.apartment) {
                                 return null;
                               }
@@ -548,6 +558,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                                     prefixIcon: Icon(Icons.grid_view_outlined),
                                   ),
                                   validator: (value) {
+                                    if (desktop) {
+                                      return null;
+                                    }
                                     if (_type == null ||
                                         _type == PropertyType.apartment) {
                                       return null;
@@ -568,6 +581,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
                                         Icon(Icons.crop_square_outlined),
                                   ),
                                   validator: (value) {
+                                    if (desktop) {
+                                      return null;
+                                    }
                                     if (_type == null ||
                                         _type == PropertyType.apartment) {
                                       return null;
@@ -670,11 +686,13 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _saving ? null : _pickOwnerFromContacts,
-              icon: const Icon(Icons.contacts_outlined),
-              label: const Text('Rehberden seç'),
-            ),
+            child: PlatformCapabilitiesScope.current.supportsContactPicker
+                ? OutlinedButton.icon(
+                    onPressed: _saving ? null : _pickOwnerFromContacts,
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: const Text('Rehberden seç'),
+                  )
+                : const PlatformLockedAction(label: 'Rehberden seç'),
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -821,6 +839,10 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   }
 
   String? _positiveMoneyValidator(String? value) {
+    if (PlatformCapabilitiesScope.current.isDesktop &&
+        (value ?? '').trim().isEmpty) {
+      return null;
+    }
     return parseMoneyInput(value ?? '') <= 0 ? 'Geçerli fiyat girin.' : null;
   }
 
@@ -834,7 +856,9 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
 
   String? _areaValidator(String? value) {
     final raw = (value ?? '').trim();
-    if (_type != PropertyType.apartment && raw.isEmpty) {
+    if (!PlatformCapabilitiesScope.current.isDesktop &&
+        _type != PropertyType.apartment &&
+        raw.isEmpty) {
       return 'Alan girin.';
     }
     if (raw.isEmpty) {
@@ -1000,7 +1024,8 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
   }
 
   Future<void> _save() async {
-    if (_dealType == null) {
+    final desktop = PlatformCapabilitiesScope.current.isDesktop;
+    if (!desktop && _dealType == null) {
       _showSnack('Satılık veya kiralık seçin.');
       return;
     }
@@ -1024,7 +1049,7 @@ class _AddEditListingScreenState extends State<AddEditListingScreen> {
         type: _type!,
         dealType: _dealType,
         placeKind: _placeKind,
-        placeName: _placeName!,
+        placeName: _placeName ?? '',
         streetName: _streetName ?? '',
         buildingName: _type == PropertyType.apartment
             ? _buildingController.text.trim()
@@ -1419,24 +1444,31 @@ class _LocationEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onSelect,
-                  icon: const Icon(Icons.map_outlined),
-                  label: Text(hasLocation ? 'Konumu değiştir' : 'Konum seç'),
+          if (PlatformCapabilitiesScope.current.supportsLocationEditing)
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: onSelect,
+                    icon: const Icon(Icons.map_outlined),
+                    label: Text(hasLocation ? 'Konumu değiştir' : 'Konum seç'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              IconButton.filledTonal(
-                tooltip: 'Konumu temizle',
-                onPressed: onClear,
-                icon: const Icon(Icons.location_off_outlined),
-              ),
-            ],
-          ),
-          if (hasLocation) ...[
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  tooltip: 'Konumu temizle',
+                  onPressed: onClear,
+                  icon: const Icon(Icons.location_off_outlined),
+                ),
+              ],
+            )
+          else
+            PlatformLockedAction(
+              label: hasLocation ? 'Konumu değiştir' : 'Konum seç',
+              expanded: true,
+            ),
+          if (hasLocation &&
+              PlatformCapabilitiesScope.current.supportsLocationEditing) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
@@ -1805,11 +1837,14 @@ class _PhotoEditor extends StatelessWidget {
               label: const Text('Galeri'),
             ),
             const SizedBox(width: 10),
-            FilledButton.tonalIcon(
-              onPressed: onTakePhoto,
-              icon: const Icon(Icons.photo_camera_outlined),
-              label: const Text('Kamera'),
-            ),
+            if (PlatformCapabilitiesScope.current.supportsCamera)
+              FilledButton.tonalIcon(
+                onPressed: onTakePhoto,
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Kamera'),
+              )
+            else
+              const PlatformLockedAction(label: 'Kamera'),
           ],
         ),
         const SizedBox(height: 12),

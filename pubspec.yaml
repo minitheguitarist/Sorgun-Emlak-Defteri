@@ -15,6 +15,8 @@ dependencies:
   path: ^1.9.0
   path_provider: ^2.1.5
   sqflite: ^2.4.1
+  sqflite_common_ffi: ^2.4.2
+  file_selector: ^1.1.0
   archive: ^4.0.9
   flutter_map: ^8.3.1
   geolocator: ^14.0.3
@@ -26,6 +28,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+# 10.2.x uses Gradle's built-in Kotlin mode. Keep the Android v1.0.7 project
+# compatible until its existing Gradle setup is migrated in a separate update.
+dependency_overrides:
+  package_info_plus: 10.1.0
 
 flutter:
   uses-material-design: true

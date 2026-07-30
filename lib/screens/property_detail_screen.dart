@@ -12,7 +12,9 @@ import '../models/property_type.dart';
 import '../services/app_database.dart';
 import '../services/formatters.dart';
 import '../services/location_links.dart';
+import '../services/platform_capabilities.dart';
 import '../widgets/listing_card.dart';
+import '../widgets/platform_locked_action.dart';
 import 'advertisement_creator_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -82,107 +84,115 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _listing.displayTitle,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _listing.displayTitle,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          if (_listing.isSold)
+                            Chip(
+                              avatar: const Icon(Icons.check_circle, size: 18),
+                              label: const Text('Satıldı'),
+                              side: BorderSide.none,
+                              backgroundColor:
+                                  theme.colorScheme.tertiaryContainer,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _listing.addressLine,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _PublicInfoGrid(
+                          listing: _listing, soldView: widget.soldView),
+                      if ((_listing.ownerName ?? '').trim().isNotEmpty ||
+                          _listing.ownerPhoneList.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _OwnerInfo(listing: _listing, onCall: _callOwner),
+                      ],
+                      if (_listing.hasLocation) ...[
+                        const SizedBox(height: 12),
+                        _LocationActions(
+                          listing: _listing,
+                          onOpen: _openLocation,
+                          onShare: _shareLocation,
+                          onNearby: _showNearbyOptions,
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+                      if (_listing.type != PropertyType.apartment)
+                        _ParcelInfo(listing: _listing),
+                      if (_listing.description.trim().isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          'Açıklama',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _listing.description,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: _openAdvertisementCreator,
+                        icon: const Icon(Icons.campaign_outlined),
+                        label: const Text('Reklam oluştur'),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton.filledTonal(
+                          tooltip: _privateVisible
+                              ? 'Gizli bilgileri kapat'
+                              : 'Gizli',
+                          onPressed: () {
+                            setState(() => _privateVisible = !_privateVisible);
+                          },
+                          icon: Icon(
+                            _privateVisible
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
                         ),
                       ),
-                      if (_listing.isSold)
-                        Chip(
-                          avatar: const Icon(Icons.check_circle, size: 18),
-                          label: const Text('Satıldı'),
-                          side: BorderSide.none,
-                          backgroundColor: theme.colorScheme.tertiaryContainer,
-                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _privateVisible
+                            ? _PrivatePanel(
+                                key: const ValueKey('private-panel'),
+                                listing: _listing,
+                                privateDataFuture: _privateDataFuture,
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('private-panel-hidden'),
+                              ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _listing.addressLine,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _PublicInfoGrid(listing: _listing, soldView: widget.soldView),
-                  if ((_listing.ownerName ?? '').trim().isNotEmpty ||
-                      _listing.ownerPhoneList.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _OwnerInfo(listing: _listing, onCall: _callOwner),
-                  ],
-                  if (_listing.hasLocation) ...[
-                    const SizedBox(height: 12),
-                    _LocationActions(
-                      listing: _listing,
-                      onOpen: _openLocation,
-                      onShare: _shareLocation,
-                      onNearby: _showNearbyOptions,
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  if (_listing.type != PropertyType.apartment)
-                    _ParcelInfo(listing: _listing),
-                  if (_listing.description.trim().isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      'Açıklama',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _listing.description,
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: _openAdvertisementCreator,
-                    icon: const Icon(Icons.campaign_outlined),
-                    label: const Text('Reklam oluştur'),
-                  ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton.filledTonal(
-                      tooltip:
-                          _privateVisible ? 'Gizli bilgileri kapat' : 'Gizli',
-                      onPressed: () {
-                        setState(() => _privateVisible = !_privateVisible);
-                      },
-                      icon: Icon(
-                        _privateVisible
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                    ),
-                  ),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _privateVisible
-                        ? _PrivatePanel(
-                            key: const ValueKey('private-panel'),
-                            listing: _listing,
-                            privateDataFuture: _privateDataFuture,
-                          )
-                        : const SizedBox.shrink(
-                            key: ValueKey('private-panel-hidden'),
-                          ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -745,11 +755,24 @@ class _OwnerInfo extends StatelessWidget {
                   .map(
                     (phone) => Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: IconButton.filledTonal(
-                        tooltip: '$phone ara',
-                        onPressed: () => onCall(phone),
-                        icon: const Icon(Icons.call_outlined),
-                      ),
+                      child: PlatformCapabilitiesScope
+                              .current.supportsDirectCall
+                          ? IconButton.filledTonal(
+                              tooltip: '$phone ara',
+                              onPressed: () => onCall(phone),
+                              icon: const Icon(Icons.call_outlined),
+                            )
+                          : Tooltip(
+                              message:
+                                  PlatformCapabilitiesScope.phoneOnlyMessage,
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.forbidden,
+                                child: IconButton.filledTonal(
+                                  onPressed: null,
+                                  icon: const Icon(Icons.lock_outline),
+                                ),
+                              ),
+                            ),
                     ),
                   )
                   .toList(),
@@ -839,11 +862,16 @@ class _LocationActions extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onShare,
-                  icon: const Icon(Icons.ios_share_outlined),
-                  label: const Text('Konum paylaş'),
-                ),
+                child: PlatformCapabilitiesScope.current.supportsNativeShare
+                    ? FilledButton.tonalIcon(
+                        onPressed: onShare,
+                        icon: const Icon(Icons.ios_share_outlined),
+                        label: const Text('Konum paylaş'),
+                      )
+                    : const PlatformLockedAction(
+                        label: 'Konum paylaş',
+                        expanded: true,
+                      ),
               ),
             ],
           ),

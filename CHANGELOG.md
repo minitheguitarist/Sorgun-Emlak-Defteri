@@ -2,6 +2,11 @@
 
 ## 1.0.7
 
+- Linux ve Windows icin native masaustu runner'lari ve uyarlanabilir genis ekran arayuzu eklendi.
+- Linux'ta Fedora 44 x86_64 RPM, Windows'ta x64 Inno Setup kurulum EXE'si ureten GitHub Actions akisi eklendi.
+- Masaustunde `.sedef` paketleri sistem dosya secicisiyle ice/disa aktarilabilir hale getirildi.
+- Masaustu taslaklarinda yalnizca mulk tipi zorunlu yapildi; taslaklar Android v1.0.7 ile uyumlu tutuldu.
+- Telefona ozel rehber, kamera, konum, arama, paylasma ve galeri islemleri masaustunde aciklamali kilit simgesiyle isaretlendi.
 - Sol menuye musteriler bolumu eklendi; rehberden kisi secerek musteri kaydi olusturma desteklendi.
 - Musteri detayinda min/max butce, kayitli istek filtresi, not, arama/WhatsApp ve eslesen aktif ilanlari gorme akisi eklendi.
 - Ilan duzenleme ekraninda ilgilenen musterileri ekleme/cikarma ve satista opsiyonel alici musteri secme eklendi.
