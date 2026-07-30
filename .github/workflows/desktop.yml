@@ -46,7 +46,7 @@ jobs:
         run: |
           dnf install -y \
             bash clang cmake curl file findutils git gtk3-devel \
-            libstdc++-devel ninja-build pkgconf-pkg-config rpm-build \
+            jq libstdc++-devel ninja-build pkgconf-pkg-config rpm-build \
             tar unzip xz
 
       - name: Checkout
