@@ -45,9 +45,9 @@ jobs:
       - name: Install Fedora build dependencies
         run: |
           dnf install -y \
-            bash clang cmake curl file findutils git gtk3-devel \
+            bash clang cmake curl file findutils gcc-c++ git gtk3-devel \
             jq libstdc++-devel ninja-build pkgconf-pkg-config rpm-build \
-            tar unzip xz
+            tar unzip which xz zip
 
       - name: Checkout
         uses: actions/checkout@v7
